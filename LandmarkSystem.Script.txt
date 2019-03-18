@@ -1,0 +1,187 @@
+//nogenerate
+
+#Include "Libs/Nadeo/ShootMania/SM3.Script.txt" as SM3
+#Include "Modes/ShootMania/Assault/generated/Components.Script.txt" as Components
+#Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
+#Include "Modes/ShootMania/Assault/Constants.Script.txt" as AssaultConstants
+#Include "Libs/Nadeo/Message.Script.txt" as Message
+
+#Include "Modes/ShootMania/Assault/components/ALandmark.Script.txt" as Lib_ALandmark
+#Include "Modes/ShootMania/Assault/components/ATeam.Script.txt" as Lib_ATeam
+#Include "Modes/ShootMania/Assault/components/ARound.Script.txt" as Lib_ARound
+#Include "Modes/ShootMania/Assault/components/ACurrentSpawn.Script.txt" as Lib_ACurrentSpawn
+#Include "Modes/ShootMania/Assault/components/AGameSettings.Script.txt" as Lib_AGameSettings
+#Include "Modes/ShootMania/Assault/ELandmarkType.Script.txt" as ELandmarkType
+
+#Struct Lib_ALandmark::ALandmark as ALandmark
+#Struct Lib_ATeam::ATeam as ATeam
+#Struct Lib_ACurrentSpawn::ACurrentSpawn as ACurrentSpawn
+#Struct Lib_ARound::ARound as ARound
+#Struct Lib_AGameSettings::AGameSettings as AGameSettings
+#Struct EntityManager::SEntity as SEntity
+
+Void NewLandmarks()
+{
+	// Destroy old landmark entities first
+	foreach (Entity in Components::GetAllEntities(ALandmark {}))
+	{
+		EntityManager::DestroyEntity(Entity);
+	}
+	
+	foreach (Entity in Components::GetAllEntities(ACurrentSpawn {}))
+	{
+		EntityManager::DestroyEntity(Entity);
+	}
+	
+	declare maxLines = 0;
+	foreach (MapLandmark in MapLandmarks)
+	{
+		declare landmarkData = Lib_ALandmark::constructor(MapLandmark);
+		declare entity = EntityManager::CreateEntity();
+		
+		Components::Set(entity, landmarkData);
+		
+		if (landmarkData.Type == ELandmarkType::Spawn)
+		{
+			declare teamType = AssaultConstants::TeamDefense;
+			if (MapLandmark.Tag == "SpawnAttack")
+				teamType = AssaultConstants::TeamAttack;
+		
+			Components::Set(entity, ATeam { Value = teamType });
+		}
+		else if (landmarkData.Type == ELandmarkType::ControlPoint)
+		{
+			Components::Set(entity, ATeam { Value = AssaultConstants::TeamDefense });
+			
+			MapLandmark.Gauge.Value = 0;
+			MapLandmark.Gauge.Speed = -1;
+			MapLandmark.Gauge.Max = 100;
+			
+			if (MapLandmark.Order > maxLines)
+				maxLines = MapLandmark.Order;
+		}
+		
+		log("Created Landmark entity " ^ entity.Index);
+	}
+	
+	foreach (Entity in Components::GetAllEntities(AGameSettings {}))
+	{
+		declare settings = Components::Get(Entity, AGameSettings {});
+		settings.MaxLines = maxLines;
+		
+		Components::Set(Entity, settings);
+	}
+	
+	declare currentSpawnsEntity = EntityManager::CreateEntity();
+	
+	Components::Set(currentSpawnsEntity, ACurrentSpawn {});
+}
+
+Void OnNewRound()
+{
+	declare AGameSettings gameSettings;
+	
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+
+	foreach (Entity in Components::GetAllEntities(ALandmark {}))
+	{
+		declare landmarkData = Components::Get(Entity, ALandmark {});
+		if (landmarkData.Type == ELandmarkType::ControlPoint)
+		{
+			declare gauge <=> MapLandmarks[landmarkData.Value].Gauge;
+			
+			gauge.Value = 0;
+			gauge.Captured = False;
+			gauge.Speed = 0;
+		}
+		if (landmarkData.Type == ELandmarkType::Gate)
+		{
+			declare gate <=> MapLandmarks[landmarkData.Value].Gate;
+			declare gauge <=> MapLandmarks[landmarkData.Value].Gauge; 
+		
+			gate.Automatic = False;
+			gate.ManualClosed = True;
+			gauge.Max = gameSettings.OpenGateTime * 1000;
+			gauge.Value = gauge.Max;
+			gauge.Speed = -1;
+		}
+	}
+}
+
+declare Boolean _MessageIsShown;
+Void Update()
+{
+	declare ARound roundData;
+	declare SEntity currSpawnsEntity;
+	declare AGameSettings gameSettings;
+	
+	foreach (Entity in Components::GetAllEntities(ARound {}))
+	{
+		roundData = Components::Get(Entity, ARound {});
+	}
+	
+	foreach (Entity in Components::GetAllEntities(ACurrentSpawn {}))
+	{
+		currSpawnsEntity = Entity;
+	}
+	
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+
+	declare Ident currAtkSpawn;
+	declare Ident currDefSpawn;
+	foreach (Entity in Components::GetAllEntities(ALandmark {}))
+	{
+		declare landmarkData = Components::Get(Entity, ALandmark {});
+		if (landmarkData.Type == ELandmarkType::None)
+			continue;
+			
+		// Set current spawns
+		if (landmarkData.Type == ELandmarkType::Spawn 
+				&& Components::Has(Entity, ATeam {}))
+		{
+			declare team = Components::Get(Entity, ATeam {}).Value;
+			if (team == AssaultConstants::TeamAttack
+					&& (currAtkSpawn == NullId || landmarkData.Index == roundData.CaptureIndex))
+				currAtkSpawn = landmarkData.Value;
+			else if (team == AssaultConstants::TeamDefense
+					&& (currDefSpawn == NullId || landmarkData.Index == roundData.CaptureIndex))
+				currDefSpawn = landmarkData.Value;
+		}
+		
+		if (landmarkData.Type == ELandmarkType::Gate)
+		{
+			declare gate <=> MapLandmarks[landmarkData.Value].Gate;
+			declare gauge <=> MapLandmarks[landmarkData.Value].Gauge; 
+		
+			gauge.Max = gameSettings.OpenGateTime * 1000;
+			gauge.Clan = roundData.AtkTeam;	
+			gate.Clan = 0;
+			if (gauge.Value <= 0)
+			{
+				gate.ManualClosed = False;
+				gauge.Clan = 0;
+				gauge.Captured = True;
+				gate.Clan = roundData.AtkTeam;
+				
+				if (!_MessageIsShown)
+				{
+					Message::SendBigMessage("The gates are open!", 4000, 10);
+					_MessageIsShown = True;
+				}
+			}
+			else
+				_MessageIsShown = False;
+		}
+	}
+	
+	if (currSpawnsEntity != SEntity {})
+	{	
+		Components::Set(currSpawnsEntity, ACurrentSpawn {Attack = currAtkSpawn, Defense = currDefSpawn});
+	}
+}

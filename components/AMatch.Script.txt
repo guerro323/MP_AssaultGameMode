@@ -1,0 +1,5 @@
+#Struct AMatch
+{
+    Integer[Integer] Scores;
+    Integer RoundNb;
+}

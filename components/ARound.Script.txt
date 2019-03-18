@@ -1,0 +1,7 @@
+#Struct ARound
+{
+    Integer CaptureIndex;
+		Integer AtkTeam;
+		
+		Integer OpenGateTime;
+}

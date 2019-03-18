@@ -1,0 +1,3 @@
+#Const TeamNone 0
+#Const TeamAttack 1
+#Const TeamDefense 2

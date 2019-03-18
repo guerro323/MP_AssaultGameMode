@@ -1,0 +1,38 @@
+#Include "Modes/ShootMania/Assault/ELandmarkType.Script.txt" as ELandmarkType
+
+#Struct ALandmark
+{
+    Integer Type;
+    Ident Value;
+
+		// Global data... (for controlpoint and spawn type)
+		Integer Index;
+
+		// Spawn data...
+}
+
+ALandmark constructor(CMapLandmark mapLandmark)
+{
+    declare data = ALandmark 
+    {
+        Value = mapLandmark.Id,
+				Index = mapLandmark.Order
+    };
+
+    if (mapLandmark.Tag == "SpawnAttack" || mapLandmark.Tag == "SpawnDefense")
+    {
+				data.Type = ELandmarkType::Spawn;
+    }
+
+    if (mapLandmark.Tag == "Checkpoint")
+    {
+    		data.Type = ELandmarkType::ControlPoint;
+    }
+
+		if (mapLandmark.Tag == "Gate" && mapLandmark.Order == 1)
+		{
+				data.Type = ELandmarkType::Gate;
+		}
+
+    return data;
+}

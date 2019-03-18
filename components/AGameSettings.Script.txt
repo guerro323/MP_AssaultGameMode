@@ -1,0 +1,11 @@
+#Struct AGameSettings
+{
+  Integer TimeLimit;
+  Integer TimeToCap;
+	Integer CaptureGainTime;
+	Integer OpenGateTime;
+	
+	Integer MaxRounds;
+
+	Integer MaxLines;
+}

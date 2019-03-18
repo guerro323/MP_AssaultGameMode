@@ -1,0 +1,358 @@
+//nogenerate
+
+#Extends "Modes/ShootMania/Base/ModeShootMania.Script.txt"
+
+#Include "Modes/ShootMania/Assault/generated/Components.Script.txt" as Components
+#Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
+#Include "Modes/ShootMania/Assault/GameSystem.Script.txt" as GameSystem
+#Include "Modes/ShootMania/Assault/CharacterSystem.Script.txt" as CharacterSystem
+#Include "Modes/ShootMania/Assault/LandmarkSystem.Script.txt" as LandmarkSystem
+#Include "Modes/ShootMania/Assault/CaptureSystem.Script.txt" as CaptureSystem
+
+#Include "Modes/ShootMania/Assault/components/APlayer.Script.txt" as Lib_APlayer
+#Include "Modes/ShootMania/Assault/components/AKit.Script.txt" as Lib_AKit
+#Include "Modes/ShootMania/Assault/components/ATeam.Script.txt" as Lib_ATeam
+#Include "Modes/ShootMania/Assault/components/AGameSettings.Script.txt" as Lib_AGameSettings
+
+#Setting S_TimeLimit 240 as _("Time limit.")
+#Setting S_TimeToCap 80 as _("Time to capture.")
+#Setting S_OpenGateTime 20 as _("Time to open the gates.")
+#Setting S_CaptureGainTime 150 as _("Time to gain after a capture.")
+
+#Struct Lib_APlayer::APlayer as APlayer
+#Struct Lib_AKit::AKit as AKit
+#Struct Lib_ATeam::ATeam as ATeam
+#Struct Lib_AGameSettings::AGameSettings as AGameSettings
+#Struct EntityManager::SEntity as SEntity
+
+***Match_StartServer***
+***
+	Message::CleanAllMessages();
+	
+	UIManager.UIAll.BigMessage = "";
+
+	log("Assault Server Started!");
+	
+	foreach (Player in AllPlayers)
+	{
+		declare SEntity entityTarget for Player.User;
+		
+		entityTarget = SEntity {};
+	}
+	
+	declare gameEntity = EntityManager::CreateEntity();
+	// put it into GameSystem.Update()
+	Components::Set(gameEntity, AGameSettings
+	{
+		TimeLimit = S_TimeLimit,
+		TimeToCap = S_TimeToCap,
+		OpenGateTime = S_OpenGateTime,
+		CaptureGainTime = S_CaptureGainTime,
+		
+		MaxRounds = 2
+	});
+	
+	ItemList_Begin();
+	{
+		CreateKits();
+	}
+	ItemList_End();
+	
+	Users_SetNbFakeUsers(0, 0);
+	
+	Layers::Create("KitInterface", GetKitInterface());
+***
+
+***Match_StartMap***
+***
+	TurretsManager.MapTurrets_Reset();
+	DestroyAllBotPlayers();
+	
+	LandmarkSystem::NewLandmarks();
+	
+	log("Map Started!");
+	
+	GameSystem::NewMap();
+***
+
+***Match_StartRound***
+***
+	GameSystem::NewRound();
+	LandmarkSystem::OnNewRound();
+	
+	UIManager.UIAll.BigMessage = "";
+	
+	MB_EnablePlayMode(True);
+***
+
+***Match_Yield***
+***
+	declare i = 0;
+	
+	Layers::Attach("KitInterface");
+***
+
+***Match_PlayLoop***
+***
+	ManagePlayerData();
+	
+	GameSystem::Update();
+	LandmarkSystem::Update();
+	CharacterSystem::Update();
+	CaptureSystem::Update();
+	
+	if (GameSystem::ShouldEndRound())
+	{
+		MB_StopRound();
+	}
+***	
+
+***Match_EndRound***
+***
+	SM::UnspawnAllPlayers();
+	MB_EnablePlayMode(False);
+	
+	GameSystem::EndRound();
+	
+	MB_Sleep(5000);
+	
+	if (GameSystem::ShouldEndMatch())
+	{
+		MB_StopMap();
+	}
+***
+
+***Match_EndMap***
+***
+	log("Assault End map.");
+***
+
+ATeam GetTeam(CSmPlayer Player)
+{
+	if (Player.CurrentClan == 0)
+		return ATeam {Value = Player.User.RequestedClan};
+
+	declare blueCount = 0;
+	declare redCount = 0;
+	foreach (Data in Components::GetAllData(/* ignore */ APlayer {}, ATeam {}))
+	{
+		if (Data._ATeam.Value == 1) blueCount += 1;
+		else redCount += 1;
+	} 
+	
+	if (blueCount > redCount)
+		return ATeam {Value = 2};
+
+	return ATeam {Value = 1};
+}
+
+Void ManagePlayerData()
+{
+	foreach (Player in Players)
+	{
+		// declared variables are not saved per maps for a player, so we need to assign it to the user.
+		declare SEntity entityTarget for Player.User;
+		
+		if (EntityManager::Exists(entityTarget))
+			continue;
+			
+		entityTarget = EntityManager::CreateEntity();
+		
+		Components::Set(entityTarget, Lib_APlayer::constructor(Player));
+		Components::Set(entityTarget, GetTeam(Player));
+		log("Created Player entity " ^ entityTarget.Index);
+	}
+	
+	// Destroy entities that don't have a player anymore
+	foreach (Entity in Components::GetAllEntities(APlayer {}))
+	{
+		declare playerData = Components::Get(Entity, APlayer {});
+		if (playerData.Character != NullId && Players.existskey(playerData.Character))
+			continue;
+			
+		EntityManager::DestroyEntity(Entity); 
+		log("Destroyed Player entity " ^ Entity.Index);
+	}
+}
+
+// todo: instead charge the kits from a json text.
+Void CreateKits()
+{
+	declare SEntity Entity;
+
+	// -------------------------- //
+	// TANKS
+	// -------------------------- //
+	// Jolt
+	Entity = EntityManager::CreateEntity();
+	
+	Components::Set(Entity, AKit
+	{
+		Weapon = ::EWeapon::Nucleus,
+		AmmoGain = 0.5,
+		AmmoMax = 1,
+		
+		ArmorMax = 300,
+		
+		SpeedCoeff = 0.85,
+		
+		SkinId = ItemList_Add ("AssaultJolt.Item.gbx")
+	});
+	
+	// Hammer
+	Entity = EntityManager::CreateEntity();
+	
+	Components::Set(Entity, AKit
+	{
+		Weapon = ::EWeapon::Missile,
+		AmmoGain = 0.6,
+		AmmoMax = 5,
+		
+		ArmorMax = 300,
+		
+		SpeedCoeff = 0.85,
+		
+		SkinId = ItemList_Add ("TeamlordStruct.Item.gbx")
+	});
+	
+	// -------------------------- //
+	// Dps
+	// -------------------------- //
+	// Blade
+	Entity = EntityManager::CreateEntity();
+	
+	Components::Set(Entity, AKit
+	{
+		Weapon = ::EWeapon::Rocket,
+		AmmoGain = 0.9,
+		AmmoMax = 4,
+		
+		ArmorMax = 200,
+		
+		SpeedCoeff = 1.0,
+		
+		SkinId = ItemList_Add ("AssaultBlade.Item.gbx")
+	});
+	
+	// Blast
+	Entity = EntityManager::CreateEntity();
+	
+	Components::Set(Entity, AKit
+	{
+		Weapon = ::EWeapon::Arrow,
+		AmmoGain = 0.5,
+		AmmoMax = 2,
+		
+		ArmorMax = 200,
+		
+		SpeedCoeff = 1.0,
+		
+		SkinId = ItemList_Add ("AssaultBlast.Item.gbx")
+	});
+	
+	// -------------------------- //
+	// Support
+	// -------------------------- //
+	// Nail
+	Entity = EntityManager::CreateEntity();
+	
+	Components::Set(Entity, AKit
+	{
+		Weapon = ::EWeapon::Laser,
+		AmmoGain = 0.75,
+		AmmoMax = 1,
+		
+		ArmorMax = 200,
+		
+		SpeedCoeff = 1.0,
+		
+		SkinId = ItemList_Add ("Sniper.Item.gbx") // todo: I should rename the file
+	});
+	
+	// Cell
+	Entity = EntityManager::CreateEntity();
+	
+	Components::Set(Entity, AKit
+	{
+		Weapon = ::EWeapon::Rocket,
+		CanHeal = True,
+		AmmoGain = 0.7,
+		AmmoMax = 3,
+		
+		ArmorMax = 200,
+		ArmorReplenishGain = 100,
+		
+		SpeedCoeff = 1.0,
+		
+		SkinId = ItemList_Add ("AssaultCell.Item.gbx")
+	});
+}
+
+// ---------------------------------------- //
+// ---------------------------------------- //
+// Now,
+// Entering Ugly code.
+// ---------------------------------------- //
+// ---------------------------------------- //
+// no seriously, I will remake this.
+Text GetKitInterface()
+{
+	declare txt = """<manialink version="3">
+<frame id="ToHide">
+<label pos="-60 -58" halign="center" valign="center" text="Jolt"/>	
+<quad pos="-60 -53" halign="center" size="19 12" id="Take0" bgcolor="500" bgcolorfocus="555" scriptevents="1" opacity="0.75" />
+
+<label pos="-39 -58" halign="center" valign="center" text="Hammer"/>	
+<quad pos="-39 -53" halign="center" size="19 12" id="Take1" bgcolor="500" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+
+<label pos="-10 -58" halign="center" valign="center" text="Blade"/>	
+<quad pos="-10 -53" halign="center" size="19 12" id="Take2" bgcolor="005" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+
+<label pos="10 -58" halign="center" valign="center" text="Blast"/>	
+<quad pos="10 -53" halign="center" size="19 12" id="Take3" bgcolor="005" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+
+<label pos="39 -58" halign="center" valign="center" text="Nail"/>	
+<quad pos="39 -53" halign="center" size="19 12" id="Take4" bgcolor="050" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+
+<label pos="60 -58" halign="center" valign="center" text="Cell"/>	
+<quad pos="60 -53" halign="center" size="19 12" id="Take5" bgcolor="050" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+</frame>
+
+<script><!--
+main()
+{
+	declare CMlQuad[] quads;
+	for (I, 0, 6)
+	{
+		quads.add((Page.GetFirstChild("Take" ^ I) as CMlQuad));
+	}
+
+	declare frameToHide <=> (Page.GetFirstChild("ToHide") as CMlFrame);
+
+	while(True)
+	{
+		yield;
+		
+		if (InputPlayer == Null)
+			continue;
+		
+		frameToHide.Visible = (InputPlayer.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned);
+		
+		foreach (event in PendingEvents)
+		{
+			if (event.Type == CMlScriptEvent::Type::MouseClick && (event.Control is CMlQuad))
+			{
+				declare netwrite WantThatKit for UI = 0;
+				declare netwrite LastSpawnTick for UI = 0;
+				
+				WantThatKit = quads.keyof((event.Control as CMlQuad));
+				LastSpawnTick = Now;
+			}
+		}
+	}
+}
+--></script>
+</manialink>""";
+
+	return txt;
+}

@@ -1,0 +1,130 @@
+//nogenerate
+
+#Include "Libs/Nadeo/ShootMania/SM3.Script.txt" as SM3
+#Include "Modes/ShootMania/Assault/generated/Components.Script.txt" as Components
+#Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
+#Include "Modes/ShootMania/Assault/Constants.Script.txt" as AssaultConstants
+#Include "MathLib" as ML
+
+#Include "Modes/ShootMania/Assault/components/APlayer.Script.txt" as Lib_APlayer
+#Include "Modes/ShootMania/Assault/components/ATeam.Script.txt" as Lib_ATeam
+#Include "Modes/ShootMania/Assault/components/ALandmark.Script.txt" as Lib_ALandmark
+#Include "Modes/ShootMania/Assault/components/ACurrentSpawn.Script.txt" as Lib_ACurrentSpawn
+#Include "Modes/ShootMania/Assault/components/ARound.Script.txt" as Lib_ARound
+#Include "Modes/ShootMania/Assault/components/AGameSettings.Script.txt" as Lib_AGameSettings
+
+#Include "Modes/ShootMania/Assault/ELandmarkType.Script.txt" as ELandmarkType
+
+#Struct Lib_APlayer::APlayer as APlayer
+#Struct Lib_ATeam::ATeam as ATeam
+#Struct Lib_ALandmark::ALandmark as ALandmark
+#Struct Lib_ARound::ARound as ARound
+#Struct Lib_AGameSettings::AGameSettings as AGameSettings
+#Struct EntityManager::SEntity as SEntity
+
+Void OnCapture(CSmModeEvent event)
+{
+	PassOn(event);
+	
+	declare AGameSettings gameSettings;
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+
+	foreach (Data in Components::GetAllData(ALandmark {}))
+	{
+		if (Data._ALandmark.Value == event.Landmark.Id)
+		{
+			EndTime += gameSettings.CaptureGainTime * 1000;
+			return;
+		}
+	}
+}
+
+Void Update()
+{
+	foreach (event in PendingEvents)
+	{
+		if (event.Type == CSmModeEvent::EType::OnCapture)
+		{
+			OnCapture(event);
+		}
+	}
+
+	declare ARound round; declare SEntity roundEntity;
+	declare AGameSettings gameSettings;
+	
+	foreach (Entity in Components::GetAllEntities(ARound {}))
+	{
+		roundEntity = Entity;
+		round = Components::Get(Entity, ARound {});
+	}
+
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+	
+	// todo: remove the native markers once we will make a custom interface.
+	UIManager.UIAll.MarkersXML = "";
+
+	declare captured = 0; declare total = 0;
+	foreach (Data in Components::GetAllData(ALandmark {}))
+	{
+		if (Data._ALandmark.Type != ELandmarkType::ControlPoint)
+			continue;
+		
+		if (Data._ALandmark.Index != round.CaptureIndex)
+			continue;
+			
+		declare smLandmark <=> MapLandmarks[Data._ALandmark.Value];
+		
+		// get the icon, the code is ugly af right now
+		declare icon = "A";
+		if (smLandmark.Order == 2)
+			icon = "B";
+		if (smLandmark.Order == 3)
+			icon = "C";
+		
+		UIManager.UIAll.MarkersXML ^= """<marker icon="Point{{{icon}}}" label="{{{ML::FloorInteger(smLandmark.Gauge.ValueReal * 100)}}}%" pos="{{{smLandmark.Position.X}}} {{{smLandmark.Position.Y + 5}}} {{{smLandmark.Position.Z}}}" />""";
+		
+		declare speed = 0;
+		foreach (playerId in smLandmark.Sector.PlayersIds)
+		{
+			declare player = Players[playerId];
+			
+			if (player.CurrentClan == round.AtkTeam)
+			{
+				speed += 1;
+				
+				// todo: the overtime system should be remade (it's a kinda hack right now)
+				if ((EndTime - Now) < 4800)
+					EndTime = Now + 4800;
+			}
+			else	
+				speed -= 1;
+		}
+		
+		// todo: I should just use the clamp function lol.
+		if (speed < 0) 
+			speed = 0;
+		if (speed > 3)
+			speed = 3;
+			
+		smLandmark.Gauge.Speed = speed;
+		smLandmark.Gauge.Max = gameSettings.TimeToCap * 1000;
+		
+		if (smLandmark.Gauge.Captured)
+			captured += 1;
+		
+		total += 1;
+	}
+	
+	if (total != 0 && captured == total)
+	{
+		round.CaptureIndex += 1;
+		
+		Components::Set(roundEntity, round);
+	}
+}

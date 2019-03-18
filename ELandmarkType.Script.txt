@@ -1,0 +1,4 @@
+#Const None 0
+#Const Spawn 1
+#Const ControlPoint 2
+#Const Gate 3

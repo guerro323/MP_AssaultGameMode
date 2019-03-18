@@ -1,0 +1,224 @@
+//nogenerate
+
+#Include "Libs/Nadeo/ShootMania/SM3.Script.txt" as SM3
+#Include "Modes/ShootMania/Assault/generated/Components.Script.txt" as Components
+#Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
+#Include "Modes/ShootMania/Assault/Constants.Script.txt" as AssaultConstants
+
+#Include "Libs/Nadeo/Message.Script.txt" as Message
+#Include "Libs/Nadeo/ShootMania/Scores.Script.txt" as Scores
+
+#Include "Modes/ShootMania/Assault/components/ARound.Script.txt" as Lib_ARound
+#Include "Modes/ShootMania/Assault/components/AMatch.Script.txt" as Lib_AMatch
+#Include "Modes/ShootMania/Assault/components/AGameSettings.Script.txt" as Lib_AGameSettings
+#Include "Modes/ShootMania/Assault/components/AWinEvent.Script.txt" as Lib_AWinEvent
+
+#Struct Lib_ARound::ARound as ARound
+#Struct Lib_AMatch::AMatch as AMatch
+#Struct Lib_AGameSettings::AGameSettings as AGameSettings
+#Struct Lib_AWinEvent::AWinEvent as AWinEvent
+#Struct EntityManager::SEntity as SEntity
+
+Integer[Integer] GetTeamHitPoints()
+{
+	declare hitPoints = [1 => 0, 2 => 0];
+	foreach (Player in Players)
+	{
+		if (Player.CurrentClan == 0)
+			continue;
+	
+		hitPoints[Player.CurrentClan] += Player.Score.Points + Player.Score.RoundPoints;
+	}
+	return hitPoints;
+}
+
+Void NewMap()
+{
+	// Destroy previous entities with AMatch component...
+	foreach (Entity in Components::GetAllEntities(AMatch {}))
+	{
+		EntityManager::DestroyEntity(Entity);	
+	}
+	
+	declare matchEntity = EntityManager::CreateEntity();
+	
+	Components::Set(matchEntity, AMatch
+	{
+		Scores = [1 => 0, 2 => 0]
+	});
+}
+
+Void NewRound()
+{
+	declare AMatch match;
+
+	// Increase match nb count
+	foreach (Entity in Components::GetAllEntities(AMatch {}))
+	{
+		match = Components::Get(Entity, AMatch {});
+		match.RoundNb += 1;
+		
+		Components::Set(Entity, match);
+	}
+
+	declare Integer prevAtkTeam = 1;
+	// Get the attack team from the previous round.
+	foreach (Entity in Components::GetAllEntities(ARound {}))
+	{
+		declare round = Components::Get(Entity, ARound {});
+		prevAtkTeam = round.AtkTeam;
+	
+		EntityManager::DestroyEntity(Entity);
+	}
+	
+	declare AGameSettings gameSettings;
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+	
+	declare newAtkTeam = 3 - prevAtkTeam;	
+	declare roundEntity = EntityManager::CreateEntity();
+	
+	declare hitPoints = GetTeamHitPoints();
+	if (match.RoundNb > gameSettings.MaxRounds)
+	{
+		newAtkTeam = 2;
+		if (hitPoints[1] > hitPoints[2])
+			newAtkTeam = 1;
+	}
+	
+	Components::Set(roundEntity, ARound { CaptureIndex = 1, AtkTeam = newAtkTeam, OpenGateTime = Now + gameSettings.OpenGateTime * 1000 });
+	
+	EndTime = Now + gameSettings.TimeLimit * 1000;
+	StartTime = Now;
+}
+
+Void Update()
+{
+	declare hitPoints = GetTeamHitPoints();
+
+	foreach (Entity in Components::GetAllEntities(AMatch {}))
+	{
+		declare matchData = Components::Get(Entity, AMatch {});
+	
+		// this should be removed once we made the interface.
+		UIManager.UIAll.ScoreSummary_RoundPoints1 = matchData.Scores[1];
+		UIManager.UIAll.ScoreSummary_RoundPoints2 = matchData.Scores[2];
+		
+		UIManager.UIAll.ScoreSummary_MatchPoints1 = hitPoints[1];
+		UIManager.UIAll.ScoreSummary_MatchPoints2 = hitPoints[2];
+	}
+
+	declare AGameSettings gameSettings;
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+
+	declare ARound round;
+	foreach (Data in Components::GetAllData(ARound {}))
+	{
+		round = Data._ARound;
+	}	
+	
+	if (round.CaptureIndex > gameSettings.MaxLines)
+	{
+		Components::Set(EntityManager::CreateEntity(), AWinEvent
+		{
+			Winner = round.AtkTeam,
+			Reason = 1
+		});
+	}
+	else if (EndTime < Now)
+	{
+		Components::Set(EntityManager::CreateEntity(), AWinEvent
+		{
+			Winner = 3 - round.AtkTeam,
+			Reason = 2
+		});
+	}
+}
+
+declare Integer LastTeamWin;
+Boolean ShouldEndRound()
+{
+	declare end = False;
+	foreach (Entity in Components::GetAllEntities(AWinEvent {}))
+	{	
+		end = True;
+		
+		declare event = Components::Get(Entity, AWinEvent {});
+		
+		//UIManager.UIAll.SendChat("Team " ^ event.Winner ^ " won!");
+		//Message::SendBigMessage("Team " ^ event.Winner ^ " won!", 3000, 10);
+		
+		UIManager.UIAll.BigMessage = """$<{{{Teams[event.Winner - 1].ColorizedName}}}$> wins the round!""";
+		
+		foreach (Entity in Components::GetAllEntities(AMatch {}))
+		{
+			declare matchData = Components::Get(Entity, AMatch {});
+			
+			matchData.Scores[event.Winner] += 1;
+			LastTeamWin = event.Winner;
+			
+			Components::Set(Entity, matchData);
+		}
+	
+		EntityManager::DestroyEntity(Entity);
+	}
+	
+	return end;
+}
+
+Void EndRound()
+{
+	Message::CleanAllMessages();
+}
+
+Boolean ShouldEndMatch()
+{
+	declare AGameSettings gameSettings;
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+
+	declare AMatch match; declare SEntity matchEntity;
+	foreach (Entity in Components::GetAllEntities(AMatch {}))
+	{
+		match = Components::Get(Entity, AMatch {});
+		matchEntity = Entity;
+	}	
+	
+	declare hitPoints = [1 => 0, 2 => 0];
+	foreach (Player in Players)
+	{
+		if (Player.CurrentClan == 0)
+			continue;
+	
+		hitPoints[Player.CurrentClan] += Player.Score.Points + Player.Score.RoundPoints;
+	}
+
+	for (I, 1, 2)
+	{
+		// this team won
+		if (match.Scores[I] >= gameSettings.MaxRounds && match.Scores[I] > match.Scores[3 - I])
+		{
+			UIManager.UIAll.BigMessage = """$<{{{Teams[I - 1].ColorizedName}}}$> won the match!""";
+			
+			Scores::SetClanWinner(I);
+			return True;
+		}
+		// todo: I'm not quite sure how this would happen.
+		if (match.Scores[I] > gameSettings.MaxRounds && hitPoints[I] > hitPoints[3 - I])
+		{
+			UIManager.UIAll.SendChat(I ^ " won the match by breakdown!!!!!!!!!!!!!!");
+			
+			Scores::SetClanWinner(I);
+			return True;
+		}
+	}
+	
+	return False;
+}

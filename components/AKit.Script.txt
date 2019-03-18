@@ -1,0 +1,16 @@
+#Struct AKit
+{
+		// Weapon
+    CSmMode::EWeapon Weapon;
+    Real AmmoGain;
+    Integer AmmoMax;
+		Boolean CanHeal;
+
+		// Armor
+		Integer ArmorMax;
+		Integer ArmorReplenishGain;
+		
+		Real SpeedCoeff;
+		
+		Ident SkinId;
+}

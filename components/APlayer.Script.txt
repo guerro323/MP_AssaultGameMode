@@ -1,0 +1,28 @@
+#Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
+
+#Struct APlayer
+{
+	Ident Character;
+	Ident Owner;
+	
+	EntityManager::SEntity Kit;
+	EntityManager::SEntity WantedKit;
+
+	Integer RespawnTick;
+}
+
+APlayer constructor(CSmPlayer character)
+{
+	return APlayer
+	{
+		Character = character.Id,
+		Owner = character.User.Id,
+
+		RespawnTick = -1
+	};
+}
+
+CSmPlayer ToShootManiaCharacter(APlayer data)
+{
+	return Players[data.Character];
+}

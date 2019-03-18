@@ -1,0 +1,14 @@
+#Struct ACurrentSpawn
+{
+    Ident Attack;
+    Ident Defense;
+}
+
+ACurrentSpawn constructor(CMapLandmark attackLandmark, CMapLandmark defenseLandmark)
+{
+    return ACurrentSpawn
+    {
+        Attack = attackLandmark.Id,
+        Defense = defenseLandmark.Id
+    };
+}

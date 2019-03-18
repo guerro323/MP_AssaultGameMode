@@ -1,0 +1,200 @@
+//nogenerate
+
+#Include "Libs/Nadeo/ShootMania/SM3.Script.txt" as SM3
+#Include "Modes/ShootMania/Assault/generated/Components.Script.txt" as Components
+#Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
+#Include "Modes/ShootMania/Assault/Constants.Script.txt" as AssaultConstants
+
+#Include "Libs/Nadeo/Message.Script.txt" as Messages
+
+#Include "Modes/ShootMania/Assault/components/APlayer.Script.txt" as Lib_APlayer
+#Include "Modes/ShootMania/Assault/components/AKit.Script.txt" as Lib_AKit
+#Include "Modes/ShootMania/Assault/components/ATeam.Script.txt" as Lib_ATeam
+#Include "Modes/ShootMania/Assault/components/ACurrentSpawn.Script.txt" as Lib_ACurrentSpawn
+#Include "Modes/ShootMania/Assault/components/ARound.Script.txt" as Lib_ARound
+
+#Struct Lib_AKit::AKit as AKit
+#Struct Lib_APlayer::APlayer as APlayer
+#Struct Lib_ATeam::ATeam as ATeam
+#Struct Lib_ARound::ARound as ARound
+#Struct Lib_ACurrentSpawn::ACurrentSpawn as ACurrentSpawn
+#Struct EntityManager::SEntity as SEntity
+
+Boolean IsSpawned(APlayer player)
+{
+	if (player.Character == NullId || !Players.existskey(player.Character))
+		return False;
+		
+	return Players[player.Character].SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned;
+}
+
+Void UpdateKit(CSmPlayer character, AKit Kit)
+{
+	if (character.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned)
+		SM3::Unspawn(character);
+
+	SetPlayerWeapon(character, Kit.Weapon, True);
+	SetPlayerAmmoMax(character, Kit.Weapon, Kit.AmmoMax);
+	
+	character.AmmoGain = Kit.AmmoGain;
+	
+	character.ForceModelId = Kit.SkinId;
+	
+	character.Armor = Kit.ArmorMax;
+	character.ArmorMax = Kit.ArmorMax;
+	character.ArmorReplenishGain = Kit.ArmorReplenishGain;
+	character.SpeedPower = Kit.SpeedCoeff;
+}
+
+Void SpawnWithKit(CSmPlayer character, Integer team, CMapSpawn spawn)
+{
+	declare entityTarget for character.User = SEntity {};	
+	declare playerData = Components::Get(entityTarget, APlayer {});
+	declare kitData = Components::Get(playerData.WantedKit , AKit {});
+	
+	UpdateKit(character, kitData);
+
+	SM3::Spawn(character, team, spawn);
+}
+
+Void Spawn(APlayer player, Integer team, Integer atkTeam, CMapSpawn atkSpawn, CMapSpawn defSpawn)
+{
+	declare character <=> Lib_APlayer::ToShootManiaCharacter(player);
+	
+	if (team == atkTeam)
+	{
+		SpawnWithKit(character, team, atkSpawn);
+		Messages::SendBigMessage(character, "You are attacking!", 5000, 10);
+	}
+	else
+	{
+		SpawnWithKit(character, team, defSpawn);
+		Messages::SendBigMessage(character, "You are defending!", 5000, 10);
+	}
+}
+
+Void OnHit(CSmModeEvent event)
+{
+	if (event.Shooter == Null || event.Victim == Null)
+	{
+		Discard(event);
+		return;
+	}
+	
+	declare SEntity entityTarget as shooterEntity for event.Shooter.User;
+	declare shooterPlayerData = Components::Get(shooterEntity, APlayer {});
+	declare shooterKit = Components::Get(shooterPlayerData.Kit, AKit {});
+	
+	if (event.Victim.CurrentClan == event.Shooter.CurrentClan)
+	{
+		if (!shooterKit.CanHeal || event.Shooter == event.Victim) 
+		{	
+			Discard(event);
+			return;
+		}
+		
+		event.Damage = -100;
+	}
+	else
+		event.Damage = 100;
+		
+	if (event.Victim.CurWeapon == GetWeaponNum(CSmMode::EWeapon::Nucleus))
+	{
+		AddPlayerAmmo(event.Victim, CSmMode::EWeapon::Nucleus, 0.25);
+	}
+		
+	if (event.Shooter.Armor - event.Damage < event.Shooter.ArmorMax)
+		event.Shooter.Score.RoundPoints += 1;
+	
+	PassOn(event);
+}
+
+SEntity FindKitFromIndex(Integer index)
+{
+	declare SEntity kitEntity;
+	
+	declare i = 0;
+	foreach (Entity in Components::GetAllEntities(AKit {}))
+	{
+		if (i == index) { kitEntity = Entity; break; }
+	
+		i += 1;
+	}
+	
+	return kitEntity;
+}
+
+Void Update()
+{
+	declare ARound round;
+	declare CMapSpawn currAtkSpawn;
+	declare CMapSpawn currDefSpawn;
+	
+	foreach (Data in Components::GetAllData(ARound {}))
+	{
+		round = Data._ARound;
+	}
+	
+	foreach (Data in Components::GetAllData(ACurrentSpawn {}))
+	{
+		if (Data._ACurrentSpawn.Attack != NullId) 
+			currAtkSpawn <=> MapLandmarks[Data._ACurrentSpawn.Attack].PlayerSpawn;
+		if (Data._ACurrentSpawn.Defense != NullId) 
+			currDefSpawn <=> MapLandmarks[Data._ACurrentSpawn.Defense].PlayerSpawn;
+	}
+	
+	foreach (event in PendingEvents)
+	{
+		if (event.Type == CSmModeEvent::EType::OnHit)
+		{
+			OnHit(event);
+		}
+	}
+
+	foreach (Entity in Components::GetAllEntities(APlayer {}, ATeam {}))
+	{
+		declare playerData = Components::Get(Entity, APlayer {});
+		declare team = Components::Get(Entity, ATeam {}).Value;
+		
+		declare character <=> Lib_APlayer::ToShootManiaCharacter(playerData);
+		
+		declare netread Integer WantThatKit for UIManager.GetUI(character);
+		declare netread Integer LastSpawnTick for UIManager.GetUI(character);
+		declare Integer PlayerLastSpawnTick for character = 0;
+		
+		playerData.WantedKit = FindKitFromIndex(WantThatKit);
+		Components::Set(Entity, playerData);
+		
+		// Unspawn players who aren't in their requested clan.
+		if (character.User.RequestedClan != team)
+		{
+			if (IsSpawned(playerData))
+			{
+				playerData.RespawnTick = Now + 1000;
+				SM3::Unspawn(character);
+			}
+			
+			Components::Set(Entity, ATeam {Value = character.User.RequestedClan});
+			SetPlayerClan(character, character.User.RequestedClan);
+		}
+	
+		// Respawn player
+		if (currAtkSpawn != Null && currDefSpawn != Null 
+				&& !IsSpawned(playerData) && playerData.RespawnTick < Now
+				&& PlayerLastSpawnTick != LastSpawnTick)
+		{
+			PlayerLastSpawnTick = LastSpawnTick;
+		
+			playerData.RespawnTick = Now;
+			playerData.Kit = playerData.WantedKit;
+			Components::Set(Entity, playerData);
+			
+			Spawn(playerData, team, round.AtkTeam, currAtkSpawn, currDefSpawn);
+		}
+		
+		if (character.Armor != character.ArmorMax)
+			character.EnergyLevel = 0.25;
+		else
+			character.EnergyLevel = 1.0;
+	}
+}
