@@ -1,6 +1,12 @@
 //nogenerate
 
-#Extends "Modes/ShootMania/Base/ModeShootMania.Script.txt"
+/*
+ *	Mode Assault
+ */
+
+#Extends "Modes/ShootMania/Base/ModeShootmania.Script.txt"
+
+#Include "Libs/Stormium/Interface.Script.txt" as StormiumIT
 
 #Include "Modes/ShootMania/Assault/generated/Components.Script.txt" as Components
 #Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
@@ -14,16 +20,32 @@
 #Include "Modes/ShootMania/Assault/components/ATeam.Script.txt" as Lib_ATeam
 #Include "Modes/ShootMania/Assault/components/AGameSettings.Script.txt" as Lib_AGameSettings
 
-#Setting S_TimeLimit 240 as _("Time limit.")
+#Setting S_TimeLimit 260 as _("Time limit.")
 #Setting S_TimeToCap 80 as _("Time to capture.")
 #Setting S_OpenGateTime 20 as _("Time to open the gates.")
-#Setting S_CaptureGainTime 150 as _("Time to gain after a capture.")
+#Setting S_CaptureGainTime 180 as _("Time to gain after a capture.")
+
+#Setting S_HudModulePath "Nadeo/ShootMania/SiegeV1/Hud.Module.Gbx" as "<hidden>"
 
 #Struct Lib_APlayer::APlayer as APlayer
 #Struct Lib_AKit::AKit as AKit
 #Struct Lib_ATeam::ATeam as ATeam
 #Struct Lib_AGameSettings::AGameSettings as AGameSettings
 #Struct EntityManager::SEntity as SEntity
+
+#Const CompatibleMapTypes "AgeArena"
+#Const Version				"2019-04-14"
+#Const ScriptName			"Assault.Script.txt"
+
+#Const CC """ halign="center" valign="center" """
+#Const LC """ halign="left" valign="center" """
+#Const RC """ halign="right" valign="center" """
+
+***Match_Settings***
+***
+	MB_Settings_UseDefaultTimer = False;
+	MB_Settings_UseDefaultClansScoresUI = False;
+***
 
 ***Match_StartServer***
 ***
@@ -41,7 +63,7 @@
 	}
 	
 	declare gameEntity = EntityManager::CreateEntity();
-	// put it into GameSystem.Update()
+	
 	Components::Set(gameEntity, AGameSettings
 	{
 		TimeLimit = S_TimeLimit,
@@ -53,14 +75,30 @@
 	});
 	
 	ItemList_Begin();
-	{
-		CreateKits();
-	}
+	CreateKits();
 	ItemList_End();
 	
-	Users_SetNbFakeUsers(0, 0);
+	Users_SetNbFakeUsers(6, 6);
 	
 	Layers::Create("KitInterface", GetKitInterface());
+	CaptureSystem::Create();
+	
+	UIManager.UIAll.TeamLabelsVisibility = CUIConfig::ELabelsVisibility::Always; 
+	UIManager.UIAll.TeamLabelsShowGauges = CUIConfig::EVisibility::ForcedVisible;
+	UIManager.UIAll.OpposingTeamLabelsVisibility = CUIConfig::ELabelsVisibility::WhenVisible;
+	UIManager.UIAll.OpposingTeamLabelsShowGauges = CUIConfig::EVisibility::Manual;
+	
+	StormiumIT::Load(StormiumIT::C_ModeChampions);
+	StormiumIT::ShowCustomCoutdown(True);
+	StormiumIT::ShowCustomScores(True);
+	StormiumIT::ShowCustomMarkers(True);
+	StormiumIT::SetActive(True);
+	
+	Hud_Load(S_HudModulePath);
+	//Hud_Load("AssaultHUD.Module.Gbx");
+	if (Hud != Null && Hud.ScoresTable != Null) {
+	  Hud.ScoresTable.Scores_Sort(CModulePlaygroundScoresTable::EScoreSortOrder::SMPoints);
+	}
 ***
 
 ***Match_StartMap***
@@ -71,6 +109,8 @@
 	LandmarkSystem::NewLandmarks();
 	
 	log("Map Started!");
+	
+	UseClans = True;
 	
 	GameSystem::NewMap();
 ***
@@ -90,6 +130,9 @@
 	declare i = 0;
 	
 	Layers::Attach("KitInterface");
+	
+	StormiumIT::Loop();
+	CaptureSystem::Yield();
 ***
 
 ***Match_PlayLoop***
@@ -150,7 +193,6 @@ Void ManagePlayerData()
 {
 	foreach (Player in Players)
 	{
-		// declared variables are not saved per maps for a player, so we need to assign it to the user.
 		declare SEntity entityTarget for Player.User;
 		
 		if (EntityManager::Exists(entityTarget))
@@ -175,7 +217,6 @@ Void ManagePlayerData()
 	}
 }
 
-// todo: instead charge the kits from a json text.
 Void CreateKits()
 {
 	declare SEntity Entity;
@@ -224,12 +265,14 @@ Void CreateKits()
 	Components::Set(Entity, AKit
 	{
 		Weapon = ::EWeapon::Rocket,
-		AmmoGain = 0.9,
+		AmmoGain = 1.2,
 		AmmoMax = 4,
 		
 		ArmorMax = 200,
 		
 		SpeedCoeff = 1.0,
+		
+		LifeStealPower = 0,
 		
 		SkinId = ItemList_Add ("AssaultBlade.Item.gbx")
 	});
@@ -240,8 +283,8 @@ Void CreateKits()
 	Components::Set(Entity, AKit
 	{
 		Weapon = ::EWeapon::Arrow,
-		AmmoGain = 0.5,
-		AmmoMax = 2,
+		AmmoGain = 0.45,
+		AmmoMax = 1,
 		
 		ArmorMax = 200,
 		
@@ -266,7 +309,7 @@ Void CreateKits()
 		
 		SpeedCoeff = 1.0,
 		
-		SkinId = ItemList_Add ("Sniper.Item.gbx") // todo: I should rename the file
+		SkinId = ItemList_Add ("Sniper.Item.gbx")
 	});
 	
 	// Cell
@@ -276,11 +319,11 @@ Void CreateKits()
 	{
 		Weapon = ::EWeapon::Rocket,
 		CanHeal = True,
-		AmmoGain = 0.7,
-		AmmoMax = 3,
+		AmmoGain = 0.9,
+		AmmoMax = 2,
 		
 		ArmorMax = 200,
-		ArmorReplenishGain = 100,
+		ArmorReplenishGain = 85,
 		
 		SpeedCoeff = 1.0,
 		
@@ -288,34 +331,73 @@ Void CreateKits()
 	});
 }
 
-// ---------------------------------------- //
-// ---------------------------------------- //
-// Now,
-// Entering Ugly code.
-// ---------------------------------------- //
-// ---------------------------------------- //
-// no seriously, I will remake this.
 Text GetKitInterface()
 {
 	declare txt = """<manialink version="3">
-<frame id="ToHide">
-<label pos="-60 -58" halign="center" valign="center" text="Jolt"/>	
-<quad pos="-60 -53" halign="center" size="19 12" id="Take0" bgcolor="500" bgcolorfocus="555" scriptevents="1" opacity="0.75" />
+	
+<frame id="Description" pos="0 -31.5">	
+	<label {{{LC}}} pos="-40 7.5" textprefix="" textcolor="fff" textfont="RajdhaniMono"/>
+	<label {{{LC}}} pos="-40 0" textprefix="" textcolor="fff" textfont="RajdhaniMono"/>
+	<label {{{LC}}} pos="-40 -7.5" textprefix="" textcolor="fff" textfont="RajdhaniMono"/>
+	
+	<label {{{RC}}} pos="40 7.5" id="DescType" text="TANK " textcolor="fff" textsize="3" textfont="Oswald" opacity="0.75"/>
+	
+	
+	<label {{{LC}}} pos="-32 7.5" id="DescArmor" text="3 armors" textcolor="fff" textsize="3" textfont="RajdhaniMono"/>
+	<label {{{LC}}} pos="-32 0" id="DescWeap" text="Nucleus" textcolor="fff" textsize="3" textfont="RajdhaniMono"/>
+	<label {{{LC}}} pos="-32 -7.5" id="DescDesc" text="Reloads faster when hit by an enemy." textcolor="fff" textsize="1.75" textfont="RajdhaniMono"/>
 
-<label pos="-39 -58" halign="center" valign="center" text="Hammer"/>	
-<quad pos="-39 -53" halign="center" size="19 12" id="Take1" bgcolor="500" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+	<quad {{{CC}}} size="95 30" bgcolor="000" opacity="0.75"/>
+</frame>
+	
+<frame pos="-40 -55" id="ToHide" scale="1.">
+<frame>
+<quad id="Take0" pos="0 -2.5" {{{CC}}} size="15 20" bgcolor="ffffff00" bgcolorfocus="ffffff50" scriptevents="1" />
+<quad {{{CC}}} size="15 15" image="https://cdn.discordapp.com/attachments/267654773786935307/559014926308343819/P_Susu.png"/>
+<quad {{{CC}}} pos="0" size="15 15" bgcolor="200"/>
+<quad {{{CC}}} pos="0 -10" size="15 5" bgcolor="100"/>
+<label {{{CC}}} id="Label_Score1" size="12 9" pos="0 -9.5" z-index="1" text="JOLT" textfont="Oswald" textsize="2.5"/>
+</frame>
 
-<label pos="-10 -58" halign="center" valign="center" text="Blade"/>	
-<quad pos="-10 -53" halign="center" size="19 12" id="Take2" bgcolor="005" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+<frame pos="16">
+<quad id="Take1" pos="0 -2.5" {{{CC}}} size="15 20" bgcolor="ffffff00" bgcolorfocus="ffffff50" scriptevents="1" />
+<quad {{{CC}}} size="15 15" image="https://cdn.discordapp.com/attachments/267654773786935307/559016940530696212/P_StormMan.png"/>
+<quad {{{CC}}} pos="0" size="15 15" bgcolor="200"/>
+<quad {{{CC}}} pos="0 -10" size="15 5" bgcolor="100"/>
+<label {{{CC}}} id="Label_Score1" size="12 9" pos="0 -9.5" z-index="1" text="HAMMER" textfont="Oswald" textsize="2.5"/>
+</frame>
 
-<label pos="10 -58" halign="center" valign="center" text="Blast"/>	
-<quad pos="10 -53" halign="center" size="19 12" id="Take3" bgcolor="005" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+<frame pos="32">
+<quad id="Take2" pos="0 -2.5" {{{CC}}} size="15 20" bgcolor="ffffff00" bgcolorfocus="ffffff50" scriptevents="1" />
+<quad {{{CC}}} size="15 15" image="https://cdn.discordapp.com/attachments/267654773786935307/559016942950809602/P_Blade.png"/>
+<quad {{{CC}}} pos="0" size="15 15" bgcolor="002"/>
+<quad {{{CC}}} pos="0 -10" size="15 5" bgcolor="001"/>
+<label {{{CC}}} id="Label_Score1" size="12 9" pos="0 -9.5" z-index="1" text="BLADE" textfont="Oswald" textsize="2.5"/>
+</frame>
 
-<label pos="39 -58" halign="center" valign="center" text="Nail"/>	
-<quad pos="39 -53" halign="center" size="19 12" id="Take4" bgcolor="050" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+<frame pos="48">
+<quad id="Take3" pos="0 -2.5" {{{CC}}} size="15 20" bgcolor="ffffff00" bgcolorfocus="ffffff50" scriptevents="1" />
+<quad {{{CC}}} size="15 15" image="https://cdn.discordapp.com/attachments/267654773786935307/559016942065942568/P_TronMan.png"/>
+<quad {{{CC}}} pos="0" size="15 15" bgcolor="002"/>
+<quad {{{CC}}} pos="0 -10" size="15 5" bgcolor="001"/>
+<label {{{CC}}} id="Label_Score1" size="12 9" pos="0 -9.5" z-index="1" text="BLAST" textfont="Oswald" textsize="2.5"/>
+</frame>
 
-<label pos="60 -58" halign="center" valign="center" text="Cell"/>	
-<quad pos="60 -53" halign="center" size="19 12" id="Take5" bgcolor="050" bgcolorfocus="555" scriptevents="1" opacity="0.75" />	
+<frame pos="64">
+<quad id="Take4" pos="0 -2.5" {{{CC}}} size="15 20" bgcolor="ffffff00" bgcolorfocus="ffffff50" scriptevents="1" />
+<quad {{{CC}}} size="15 15" image="https://cdn.discordapp.com/attachments/267654773786935307/559016939674927187/P_Nail.png"/>
+<quad {{{CC}}} pos="0" size="15 15" bgcolor="020"/>
+<quad {{{CC}}} pos="0 -10" size="15 5" bgcolor="010"/>
+<label {{{CC}}} id="Label_Score1" size="12 9" pos="0 -9.5" z-index="1" text="NAIL" textfont="Oswald" textsize="2.5"/>
+</frame>
+
+<frame pos="80">
+<quad id="Take5" pos="0 -2.5" {{{CC}}} size="15 20" bgcolor="ffffff00" bgcolorfocus="ffffff50" scriptevents="1" />
+<quad {{{CC}}} size="15 15" image="https://cdn.discordapp.com/attachments/267654773786935307/559016938442063892/P_Cell.png"/>
+<quad {{{CC}}} pos="0" size="15 15" bgcolor="020"/>
+<quad {{{CC}}} pos="0 -10" size="15 5" bgcolor="010"/>
+<label {{{CC}}} id="Label_Score1" size="12 9" pos="0 -9.5" z-index="1" text="CELL" textfont="Oswald" textsize="2.5"/>
+</frame>
 </frame>
 
 <script><!--
@@ -328,15 +410,29 @@ main()
 	}
 
 	declare frameToHide <=> (Page.GetFirstChild("ToHide") as CMlFrame);
+	declare frameDescription <=> (Page.GetFirstChild("Description") as CMlFrame);
+	
+	declare descArmor <=> (Page.GetFirstChild("DescArmor") as CMlLabel);
+	declare descWeap <=> (Page.GetFirstChild("DescWeap") as CMlLabel);
+	declare descInfo <=> (Page.GetFirstChild("DescDesc") as CMlLabel);
+	declare descType <=> (Page.GetFirstChild("DescType") as CMlLabel);
+	
+	frameDescription.Hide();
+	
+	declare LastTypeDescription = 0;
 
 	while(True)
 	{
 		yield;
 		
 		if (InputPlayer == Null)
+		{
+			frameToHide.Hide();
 			continue;
+		}
 		
-		frameToHide.Visible = (InputPlayer.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned);
+		frameToHide.Visible = (InputPlayer.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned)
+												&& !InputPlayer.RequestsSpectate;
 		
 		foreach (event in PendingEvents)
 		{
@@ -347,6 +443,64 @@ main()
 				
 				WantThatKit = quads.keyof((event.Control as CMlQuad));
 				LastSpawnTick = Now;
+				
+				SendCustomEvent("spawn_with_kit", [""]);
+			}
+			
+			if (event.Type == CMlScriptEvent::Type::MouseOver)
+			{
+				frameDescription.Show();
+				
+				LastTypeDescription = quads.keyof((event.Control as CMlQuad));
+				
+				if (LastTypeDescription < 6)
+					descType.Value = "SUPPORT ";
+				if (LastTypeDescription < 4)
+					descType.Value = "DAMAGE 🔥";
+				if (LastTypeDescription < 2)
+					descType.Value = "TANK ";
+				
+				if (LastTypeDescription == 0)
+				{
+					descArmor.Value = "3 armors";
+					descWeap.Value = "Nucleus";
+					descInfo.Value = "Reloads faster when hit by an enemy.\n-15% Speed";
+				}
+				if (LastTypeDescription == 1)
+				{
+					descArmor.Value = "3 armors";
+					descWeap.Value = "Missiles";
+					descInfo.Value = "-15% Speed";
+				}
+				if (LastTypeDescription == 2)
+				{
+					descArmor.Value = "2 armors";
+					descWeap.Value = "Rockets";
+					descInfo.Value = "+15% Speed";
+				}
+				if (LastTypeDescription == 3)
+				{
+					descArmor.Value = "2 armors";
+					descWeap.Value = "Arrows";
+					descInfo.Value = "No additional informations";
+				}
+				if (LastTypeDescription == 4)
+				{
+					descArmor.Value = "2 armors";
+					descWeap.Value = "Laser";
+					descInfo.Value = "No additional informations";
+				}
+				if (LastTypeDescription == 5)
+				{
+					descArmor.Value = "2 armors";
+					descWeap.Value = "Rocket (Can Heal Allies)";
+					descInfo.Value = "You are able to boost Jolt reload time.\n$zYou also heal yourself overtime.";
+				}
+			}
+			
+			if (event.Type == CMlScriptEvent::Type::MouseOut)
+			{
+				frameDescription.Hide();
 			}
 		}
 	}

@@ -12,5 +12,7 @@
 		
 		Real SpeedCoeff;
 		
+		Integer LifeStealPower;
+		
 		Ident SkinId;
 }

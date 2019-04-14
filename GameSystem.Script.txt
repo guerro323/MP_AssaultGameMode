@@ -62,12 +62,16 @@ Void NewRound()
 	}
 
 	declare Integer prevAtkTeam = 1;
-	// Get the attack team from the previous round.
 	foreach (Entity in Components::GetAllEntities(ARound {}))
 	{
 		declare round = Components::Get(Entity, ARound {});
 		prevAtkTeam = round.AtkTeam;
 	
+		EntityManager::DestroyEntity(Entity);
+	}
+	
+	foreach (Entity in Components::GetAllEntities(AWinEvent {}))
+	{	
 		EntityManager::DestroyEntity(Entity);
 	}
 	
@@ -97,17 +101,21 @@ Void NewRound()
 Void Update()
 {
 	declare hitPoints = GetTeamHitPoints();
+	
+	declare TPScore = [0 => 0, 1 => 0, 2 => 0];
+	
+	foreach (Player in Players)
+	{
+		TPScore[Player.CurrentClan] += Player.Score.Points + Player.Score.RoundPoints;
+	}
+	
+	Hud.ScoresTable.SetFooterText(TPScore[1] ^ " - " ^ TPScore[2]);
 
 	foreach (Entity in Components::GetAllEntities(AMatch {}))
 	{
 		declare matchData = Components::Get(Entity, AMatch {});
-	
-		// this should be removed once we made the interface.
-		UIManager.UIAll.ScoreSummary_RoundPoints1 = matchData.Scores[1];
-		UIManager.UIAll.ScoreSummary_RoundPoints2 = matchData.Scores[2];
 		
-		UIManager.UIAll.ScoreSummary_MatchPoints1 = hitPoints[1];
-		UIManager.UIAll.ScoreSummary_MatchPoints2 = hitPoints[2];
+		Components::Set(Entity, matchData);
 	}
 
 	declare AGameSettings gameSettings;
@@ -174,6 +182,12 @@ Boolean ShouldEndRound()
 Void EndRound()
 {
 	Message::CleanAllMessages();
+	
+	foreach (Data in Components::GetAllData(AMatch {}))
+	{
+		for (I, 1, 2)
+			ClanScores[I] = Data._AMatch.Scores[I];
+	}
 }
 
 Boolean ShouldEndMatch()
@@ -210,7 +224,6 @@ Boolean ShouldEndMatch()
 			Scores::SetClanWinner(I);
 			return True;
 		}
-		// todo: I'm not quite sure how this would happen.
 		if (match.Scores[I] > gameSettings.MaxRounds && hitPoints[I] > hitPoints[3 - I])
 		{
 			UIManager.UIAll.SendChat(I ^ " won the match by breakdown!!!!!!!!!!!!!!");

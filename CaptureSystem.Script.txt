@@ -5,6 +5,7 @@
 #Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
 #Include "Modes/ShootMania/Assault/Constants.Script.txt" as AssaultConstants
 #Include "MathLib" as ML
+#Include "Libs/Nadeo/Layers2.Script.txt" as Layers
 
 #Include "Modes/ShootMania/Assault/components/APlayer.Script.txt" as Lib_APlayer
 #Include "Modes/ShootMania/Assault/components/ATeam.Script.txt" as Lib_ATeam
@@ -66,7 +67,6 @@ Void Update()
 		gameSettings = Data._AGameSettings;
 	}
 	
-	// todo: remove the native markers once we will make a custom interface.
 	UIManager.UIAll.MarkersXML = "";
 
 	declare captured = 0; declare total = 0;
@@ -80,6 +80,9 @@ Void Update()
 			
 		declare smLandmark <=> MapLandmarks[Data._ALandmark.Value];
 		
+		smLandmark.Gauge.Clan = round.AtkTeam;
+		smLandmark.Base.Clan = 3 - round.AtkTeam;
+		
 		// get the icon, the code is ugly af right now
 		declare icon = "A";
 		if (smLandmark.Order == 2)
@@ -89,30 +92,29 @@ Void Update()
 		
 		UIManager.UIAll.MarkersXML ^= """<marker icon="Point{{{icon}}}" label="{{{ML::FloorInteger(smLandmark.Gauge.ValueReal * 100)}}}%" pos="{{{smLandmark.Position.X}}} {{{smLandmark.Position.Y + 5}}} {{{smLandmark.Position.Z}}}" />""";
 		
-		declare speed = 0;
+		declare attackSpeed = 0;
+		declare defCount = 0;
 		foreach (playerId in smLandmark.Sector.PlayersIds)
 		{
 			declare player = Players[playerId];
 			
 			if (player.CurrentClan == round.AtkTeam)
 			{
-				speed += 1;
+				attackSpeed += 1;
 				
-				// todo: the overtime system should be remade (it's a kinda hack right now)
-				if ((EndTime - Now) < 4800)
+				if ((EndTime - Now) < 5900)
 					EndTime = Now + 4800;
 			}
 			else	
-				speed -= 1;
+				defCount += 1;
 		}
 		
-		// todo: I should just use the clamp function lol.
-		if (speed < 0) 
-			speed = 0;
-		if (speed > 3)
-			speed = 3;
+		if (attackSpeed > 3)
+			attackSpeed = 3;
+		if (defCount > 0)
+			attackSpeed = 0;
 			
-		smLandmark.Gauge.Speed = speed;
+		smLandmark.Gauge.Speed = attackSpeed;
 		smLandmark.Gauge.Max = gameSettings.TimeToCap * 1000;
 		
 		if (smLandmark.Gauge.Captured)
@@ -127,4 +129,124 @@ Void Update()
 		
 		Components::Set(roundEntity, round);
 	}
+}
+
+Text Layer_CaptureGauge()
+{
+	declare HVC = """ halign="center" valign="center" """;
+	declare HVRB = """ halign="right" valign="bottom" """;
+	declare HVLC = """ halign="left" valign="center" """;
+	return """
+	<frame id="mainFrame" posn="0 -34.5" scale="0.5">
+		<label id="labelInformation" {{{HVC}}} posn="0 -8" textsize="3" scale="1.25" textprefix="$s" text="$sYou need to be two on the pole to capture it" style="TextButtonBig" />
+		<label id="labelProgression" {{{HVRB}}} posn="45 2.5" textsize="14" text="$s$t100" style="TextButtonBig"  />
+		<label id="labelModulo" {{{HVRB}}} posn="55 4" textsize="14" scale="0.625" text="$s%" style="TextButtonBig"  />
+		<gauge id="captureGauge" {{{HVC}}} sizen="120 10" style="EnergyBar" drawbg="1" drawblockbg="1" />
+	</frame>
+	
+	<script><!--
+		#Include "MathLib" as MathLib
+		#Include "TextLib" as TextLib
+	
+		***Start***
+		***
+			declare MainFrame = cast(CMlFrame, Page.GetFirstChild("mainFrame"));
+			declare CaptureGauge = cast(CMlGauge, Page.GetFirstChild("captureGauge"));
+			declare LabelProgression = cast(CMlLabel, Page.GetFirstChild("labelProgression"));
+			declare LabelModulo = cast(CMlLabel, Page.GetFirstChild("labelModulo"));
+			declare LabelInfo = cast(CMlLabel, Page.GetFirstChild("labelInformation"));
+		***
+	
+		***Update***
+		***
+			if (GUIPlayer != Null)
+			{
+				if (GUIPlayer.CapturedLandmark != Null && GUIPlayer.CapturedLandmark.Base != Null)
+				{
+					declare landmark <=> GUIPlayer.CapturedLandmark;
+					declare CaptureClan = 3 - landmark.Base.Clan;
+					
+					CaptureGauge.SetRatio(Lerp(CaptureGauge.Ratio, landmark.Gauge.ValueReal, 0.25));
+					CaptureGauge.Clan = landmark.Gauge.Clan;
+					
+					if (landmark.Gauge.Speed < 0)
+					{
+						LabelModulo.SetText("$ss");
+						
+						declare value = "" ^ ((landmark.Gauge.Value/landmark.Gauge.Speed)/-1000) + 1;
+						LabelProgression.SetText("$s" ^ TextLib::SubText(value, 0, 2));
+					}
+					else
+					{
+						LabelModulo.SetText("$s%");
+						LabelProgression.SetText("$s" ^ MathLib::NearestInteger(landmark.Gauge.ValueReal*100));
+					}			
+					
+					if (CaptureClan != GUIPlayer.CurrentClan)
+					{
+						if (landmark.Gauge.Captured)
+							LabelInfo.SetText("This pole is already captured. Capture the others.");
+						else
+							LabelInfo.SetText("DEFEND");
+					}
+					else
+					{
+						if (landmark.Gauge.Captured)
+							LabelInfo.SetText("This pole is already captured. Defend the others.");
+						else
+						{
+						
+							declare atkTeamNb = 0;
+							declare defTeamNb = 0;
+							foreach (playerID in landmark.Sector.PlayersIds)
+							{
+								declare player <=> Players[playerID];
+								if (player.CurrentClan == CaptureClan)
+								{							
+									atkTeamNb += 1;
+								}
+								else
+								{
+									defTeamNb += 1;
+								}
+							}
+							
+							if (defTeamNb > 0) LabelInfo.SetText("CONTESTED");
+							else LabelInfo.SetText("CAPTURING THE POLE");
+						}
+					}	
+					
+					MainFrame.Show();
+				}
+				else MainFrame.Hide();
+			}
+			else MainFrame.Hide();
+		***
+		
+		Real Lerp(Real a, Real b, Real t)
+		{
+			return a * (1 - t) + b * t;
+		}
+	
+		main()
+		{
+			+++Start+++
+			while(True)
+			{
+				+++Update+++
+				yield;
+			}
+		}
+	--></script>
+	""";
+}
+
+Void Create()
+{
+	Layers::Create("Layer_CaptureGauge", Layer_CaptureGauge());
+}
+
+Void Yield()
+{
+	Layers::Attach("Layer_CaptureGauge");
 }

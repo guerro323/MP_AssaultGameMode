@@ -5,6 +5,7 @@
 #Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
 #Include "Modes/ShootMania/Assault/Constants.Script.txt" as AssaultConstants
 #Include "Libs/Nadeo/Message.Script.txt" as Message
+#Include "Libs/Stormium/Interface.Script.txt" as StormiumIT
 
 #Include "Modes/ShootMania/Assault/components/ALandmark.Script.txt" as Lib_ALandmark
 #Include "Modes/ShootMania/Assault/components/ATeam.Script.txt" as Lib_ATeam
@@ -53,6 +54,8 @@ Void NewLandmarks()
 		{
 			Components::Set(entity, ATeam { Value = AssaultConstants::TeamDefense });
 			
+			log("""{{{MapLandmark.Tag}}} {{{MapLandmark.Order}}}""");
+			
 			MapLandmark.Gauge.Value = 0;
 			MapLandmark.Gauge.Speed = -1;
 			MapLandmark.Gauge.Max = 100;
@@ -63,6 +66,8 @@ Void NewLandmarks()
 		
 		log("Created Landmark entity " ^ entity.Index);
 	}
+	
+	StormiumIT::SetGoalCount(maxLines);
 	
 	foreach (Entity in Components::GetAllEntities(AGameSettings {}))
 	{
@@ -80,6 +85,12 @@ Void NewLandmarks()
 Void OnNewRound()
 {
 	declare AGameSettings gameSettings;
+	declare ARound roundData;
+	
+	foreach (Entity in Components::GetAllEntities(ARound {}))
+	{
+		roundData = Components::Get(Entity, ARound {});
+	}
 	
 	foreach (Data in Components::GetAllData(AGameSettings {}))
 	{
@@ -91,7 +102,8 @@ Void OnNewRound()
 		declare landmarkData = Components::Get(Entity, ALandmark {});
 		if (landmarkData.Type == ELandmarkType::ControlPoint)
 		{
-			declare gauge <=> MapLandmarks[landmarkData.Value].Gauge;
+			declare landmark <=> MapLandmarks[landmarkData.Value];
+			declare gauge <=> landmark.Gauge;
 			
 			gauge.Value = 0;
 			gauge.Captured = False;
@@ -135,15 +147,42 @@ Void Update()
 
 	declare Ident currAtkSpawn;
 	declare Ident currDefSpawn;
+	
+	declare i = 0;
 	foreach (Entity in Components::GetAllEntities(ALandmark {}))
 	{
 		declare landmarkData = Components::Get(Entity, ALandmark {});
 		if (landmarkData.Type == ELandmarkType::None)
 			continue;
 			
+		if (landmarkData.Type == ELandmarkType::ControlPoint)
+		{
+			declare landmark <=> MapLandmarks[landmarkData.Value];
+			declare gauge <=> landmark.Gauge;
+			
+			if (landmarkData.Index == roundData.CaptureIndex)
+			{
+				StormiumIT::SetGoalValue(i, gauge.ValueReal);
+				
+				StormiumIT::SetGoalColorDef(i, Teams[3 - roundData.AtkTeam - 1].ColorPrimary);
+				StormiumIT::SetGoalColorAtk(i, Teams[roundData.AtkTeam - 1].ColorPrimary);
+				
+				declare Pos = landmark.Position;
+				Pos.Y += 3.;
+				
+				if (roundData.CaptureIndex == 1)
+					StormiumIT::SetGoalName(i, "Point A");
+				else
+					StormiumIT::SetGoalName(i, "Point B");
+					
+				StormiumIT::SetGoalPosition(i, Pos);
+				
+				i += 1;
+			}
+		}
+			
 		// Set current spawns
-		if (landmarkData.Type == ELandmarkType::Spawn 
-				&& Components::Has(Entity, ATeam {}))
+		if (landmarkData.Type == ELandmarkType::Spawn)
 		{
 			declare team = Components::Get(Entity, ATeam {}).Value;
 			if (team == AssaultConstants::TeamAttack
@@ -171,7 +210,7 @@ Void Update()
 				
 				if (!_MessageIsShown)
 				{
-					Message::SendBigMessage("The gates are open!", 4000, 10);
+					Message::SendBigMessage("The gates are open!", 4000, 10, CUIConfig::EUISound::PhaseChange, 3);
 					_MessageIsShown = True;
 				}
 			}
@@ -179,6 +218,8 @@ Void Update()
 				_MessageIsShown = False;
 		}
 	}
+	
+	StormiumIT::SetGoalCount(i);
 	
 	if (currSpawnsEntity != SEntity {})
 	{	

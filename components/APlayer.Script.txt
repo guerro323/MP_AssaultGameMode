@@ -9,6 +9,7 @@
 	EntityManager::SEntity WantedKit;
 
 	Integer RespawnTick;
+	Integer LastSpawnTick;
 }
 
 APlayer constructor(CSmPlayer character)

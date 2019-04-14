@@ -48,11 +48,28 @@ Void UpdateKit(CSmPlayer character, AKit Kit)
 
 Void SpawnWithKit(CSmPlayer character, Integer team, CMapSpawn spawn)
 {
-	declare entityTarget for character.User = SEntity {};	
-	declare playerData = Components::Get(entityTarget, APlayer {});
-	declare kitData = Components::Get(playerData.WantedKit , AKit {});
+	declare AKit Kit;
+
+	declare entityTarget for character.User = SEntity {};
 	
-	UpdateKit(character, kitData);
+	declare playerData = Components::Get(entityTarget, APlayer {});
+	
+	// if the player don't have a kit set, use the default one
+	/*if (playerData.Kit == SEntity {})
+	{
+		foreach (Entity in Components::GetAllEntities(AKit {}))
+		{
+			playerData.Kit = Entity;
+			break;
+		}
+		
+		// update player component...
+		Components::Set(entityTarget, playerData);
+	}*/
+	
+	Kit = Components::Get(playerData.WantedKit , AKit {});
+	
+	UpdateKit(character, Kit);
 
 	SM3::Spawn(character, team, spawn);
 }
@@ -93,14 +110,24 @@ Void OnHit(CSmModeEvent event)
 			return;
 		}
 		
-		event.Damage = -100;
+		event.Damage = -1000;
 	}
 	else
+	{
 		event.Damage = 100;
+		
+		if (shooterKit.LifeStealPower > 0)
+		{
+			event.Shooter.Armor += shooterKit.LifeStealPower;
+		}
+	}
 		
 	if (event.Victim.CurWeapon == GetWeaponNum(CSmMode::EWeapon::Nucleus))
 	{
-		AddPlayerAmmo(event.Victim, CSmMode::EWeapon::Nucleus, 0.25);
+		if (event.Victim.CurrentClan == event.Shooter.CurrentClan)
+			AddPlayerAmmo(event.Victim, CSmMode::EWeapon::Nucleus, 0.15);
+		else
+			AddPlayerAmmo(event.Victim, CSmMode::EWeapon::Nucleus, 0.33);
 	}
 		
 	if (event.Shooter.Armor - event.Damage < event.Shooter.ArmorMax)
@@ -151,6 +178,27 @@ Void Update()
 		}
 	}
 
+	foreach (event in UIManager.PendingEvents)
+	{
+		if (event.Type == CUIConfigEvent::EType::OnLayerCustomEvent)
+		{
+			if (event.CustomEventType == "spawn_with_kit")
+			{
+				foreach (Entity in Components::GetAllEntities(APlayer {}))
+				{
+					declare playerData = Components::Get(Entity, APlayer {});
+					declare player <=> Lib_APlayer::ToShootManiaCharacter(playerData);
+					if (UIManager.GetUI(player) != event.UI)
+						continue;
+					
+					playerData.RespawnTick = Now + 100;
+					
+					Components::Set(Entity, playerData);
+				}
+			}
+		}
+	}
+
 	foreach (Entity in Components::GetAllEntities(APlayer {}, ATeam {}))
 	{
 		declare playerData = Components::Get(Entity, APlayer {});
@@ -160,30 +208,32 @@ Void Update()
 		
 		declare netread Integer WantThatKit for UIManager.GetUI(character);
 		declare netread Integer LastSpawnTick for UIManager.GetUI(character);
-		declare Integer PlayerLastSpawnTick for character = 0;
+
+		declare newKit = FindKitFromIndex(WantThatKit);
+		if (playerData.WantedKit != newKit)
+		{
+			playerData.WantedKit = newKit;
+			Components::Set(Entity, playerData);
+		}
 		
-		playerData.WantedKit = FindKitFromIndex(WantThatKit);
-		Components::Set(Entity, playerData);
-		
-		// Unspawn players who aren't in their requested clan.
 		if (character.User.RequestedClan != team)
 		{
 			if (IsSpawned(playerData))
 			{
-				playerData.RespawnTick = Now + 1000;
 				SM3::Unspawn(character);
 			}
 			
 			Components::Set(Entity, ATeam {Value = character.User.RequestedClan});
 			SetPlayerClan(character, character.User.RequestedClan);
 		}
-	
+		
 		// Respawn player
 		if (currAtkSpawn != Null && currDefSpawn != Null 
-				&& !IsSpawned(playerData) && playerData.RespawnTick < Now
-				&& PlayerLastSpawnTick != LastSpawnTick)
+				&& !IsSpawned(playerData)
+				&& playerData.RespawnTick > Now - 1000
+				&& playerData.RespawnTick < Now)
 		{
-			PlayerLastSpawnTick = LastSpawnTick;
+			playerData.LastSpawnTick = LastSpawnTick;
 		
 			playerData.RespawnTick = Now;
 			playerData.Kit = playerData.WantedKit;
@@ -192,9 +242,9 @@ Void Update()
 			Spawn(playerData, team, round.AtkTeam, currAtkSpawn, currDefSpawn);
 		}
 		
-		if (character.Armor != character.ArmorMax)
-			character.EnergyLevel = 0.25;
-		else
+		if (character.Armor == character.ArmorMax)
 			character.EnergyLevel = 1.0;
+		else
+			character.EnergyLevel = 0.1;
 	}
 }

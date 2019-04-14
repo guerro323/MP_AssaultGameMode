@@ -1,0 +1,98 @@
+//nogenerate
+
+#Include "Libs/Nadeo/ShootMania/SM3.Script.txt" as SM3
+#Include "Modes/ShootMania/Assault/generated/Components.Script.txt" as Components
+#Include "Libs/ECS/EntityManager.Script.txt" as EntityManager
+#Include "Modes/ShootMania/Assault/Constants.Script.txt" as AssaultConstants
+
+#Include "Modes/ShootMania/Assault/components/ARound.Script.txt" as Lib_ARound
+#Include "Modes/ShootMania/Assault/components/AMatch.Script.txt" as Lib_AMatch
+#Include "Modes/ShootMania/Assault/components/AGameSettings.Script.txt" as Lib_AGameSettings
+#Include "Modes/ShootMania/Assault/components/AWinEvent.Script.txt" as Lib_AWinEvent
+
+#Struct Lib_ARound::ARound as ARound
+#Struct Lib_AMatch::AMatch as AMatch
+#Struct Lib_AGameSettings::AGameSettings as AGameSettings
+#Struct Lib_AWinEvent::AWinEvent as AWinEvent
+#Struct EntityManager::SEntity as SEntity
+
+Void NewMap()
+{
+	// Destroy previous entities with AMatch component...
+	foreach (Entity in Components::GetAllEntities(AMatch {}))
+	{
+		EntityManager::DestroyEntity(Entity);	
+	}
+	
+	declare matchEntity = EntityManager::CreateEntity();
+	
+	Components::Set(matchEntity, AMatch
+	{
+		Scores = [1 => 0, 2 => 0]
+	});
+}
+
+Void NewRound()
+{
+	// Increase match nb count
+	foreach (Entity in Components::GetAllEntities(AMatch {}))
+	{
+		declare matchData = Components::Get(Entity, AMatch {});
+		matchData.RoundNb += 1;
+		
+		Components::Set(Entity, matchData);
+	}
+
+	declare Integer prevAtkTeam = 1;
+	foreach (Entity in Components::GetAllEntities(ARound {}))
+	{
+		declare round = Components::Get(Entity, ARound {});
+		prevAtkTeam = round.AtkTeam;
+	
+		EntityManager::DestroyEntity(Entity);
+	}
+	
+	declare AGameSettings gameSettings;
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+	
+	declare roundEntity = EntityManager::CreateEntity();
+	Components::Set(roundEntity, ARound { CaptureIndex = 1, AtkTeam = 3 - prevAtkTeam, OpenGateTime = Now + gameSettings.OpenGateTime * 1000 });
+	
+	EndTime = Now + gameSettings.TimeLimit * 1000;
+	StartTime = Now;
+}
+
+Void Update()
+{
+	declare AGameSettings gameSettings;
+	foreach (Data in Components::GetAllData(AGameSettings {}))
+	{
+		gameSettings = Data._AGameSettings;
+	}
+
+	declare ARound round;
+	foreach (Data in Components::GetAllData(ARound {}))
+	{
+		round = Data._ARound;
+	}	
+	
+	if (round.CaptureIndex > gameSettings.MaxLines)
+	{
+		Components::Set(EntityManager::CreateEntity(), AWinEvent
+		{
+			Winner = round.AtkTeam,
+			Reason = 1
+		});
+	}
+	else if (EndTime < Now)
+	{
+		Components::Set(EntityManager::CreateEntity(), AWinEvent
+		{
+			Winner = 3 - round.AtkTeam,
+			Reason = 2
+		});
+	}
+}
