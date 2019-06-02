@@ -689,11 +689,12 @@ Boolean Remove(SEntity _Entity, AWinEvent _Empty)
 declare QueryResult_AGameSettings[] Cached_QueryResult_AGameSettings;
 declare SEntity[] Cached_Entities_QueryResult_AGameSettings;
 declare Integer QueryVersion_0;
+declare Integer DestroyVersion_QueryResult_AGameSettings;
 declare Boolean Rebuild_GetAllEntities_QueryResult_AGameSettings;
 declare Boolean Rebuild_GetAllData_QueryResult_AGameSettings;
 SEntity[] GetAllEntities(AGameSettings _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_AGameSettings < EntityManager::GetDestroyVersion();
 	if (QueryVersion_0 < G_AGameSettingsVersion) rebuild = True;
 
 
@@ -701,6 +702,7 @@ SEntity[] GetAllEntities(AGameSettings _0)
 		return Cached_Entities_QueryResult_AGameSettings;
 
 	QueryVersion_0 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_AGameSettings = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_AGameSettings = True;
 	Rebuild_GetAllEntities_QueryResult_AGameSettings = False;
@@ -721,7 +723,7 @@ SEntity[] GetAllEntities(AGameSettings _0)
 
 QueryResult_AGameSettings[] GetAllData(AGameSettings _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_AGameSettings < EntityManager::GetDestroyVersion();
 	if (QueryVersion_0 < G_AGameSettingsVersion) rebuild = True;
 
 
@@ -729,6 +731,7 @@ QueryResult_AGameSettings[] GetAllData(AGameSettings _0)
 		return Cached_QueryResult_AGameSettings;
 
 	QueryVersion_0 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_AGameSettings = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_AGameSettings = True;
 	Rebuild_GetAllData_QueryResult_AGameSettings = False;
@@ -757,11 +760,12 @@ QueryResult_AGameSettings[] GetAllData(AGameSettings _0)
 declare QueryResult_AMatch[] Cached_QueryResult_AMatch;
 declare SEntity[] Cached_Entities_QueryResult_AMatch;
 declare Integer QueryVersion_1;
+declare Integer DestroyVersion_QueryResult_AMatch;
 declare Boolean Rebuild_GetAllEntities_QueryResult_AMatch;
 declare Boolean Rebuild_GetAllData_QueryResult_AMatch;
 SEntity[] GetAllEntities(AMatch _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_AMatch < EntityManager::GetDestroyVersion();
 	if (QueryVersion_1 < G_AMatchVersion) rebuild = True;
 
 
@@ -769,6 +773,7 @@ SEntity[] GetAllEntities(AMatch _0)
 		return Cached_Entities_QueryResult_AMatch;
 
 	QueryVersion_1 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_AMatch = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_AMatch = True;
 	Rebuild_GetAllEntities_QueryResult_AMatch = False;
@@ -789,7 +794,7 @@ SEntity[] GetAllEntities(AMatch _0)
 
 QueryResult_AMatch[] GetAllData(AMatch _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_AMatch < EntityManager::GetDestroyVersion();
 	if (QueryVersion_1 < G_AMatchVersion) rebuild = True;
 
 
@@ -797,6 +802,7 @@ QueryResult_AMatch[] GetAllData(AMatch _0)
 		return Cached_QueryResult_AMatch;
 
 	QueryVersion_1 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_AMatch = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_AMatch = True;
 	Rebuild_GetAllData_QueryResult_AMatch = False;
@@ -825,11 +831,12 @@ QueryResult_AMatch[] GetAllData(AMatch _0)
 declare QueryResult_AWinEvent[] Cached_QueryResult_AWinEvent;
 declare SEntity[] Cached_Entities_QueryResult_AWinEvent;
 declare Integer QueryVersion_2;
+declare Integer DestroyVersion_QueryResult_AWinEvent;
 declare Boolean Rebuild_GetAllEntities_QueryResult_AWinEvent;
 declare Boolean Rebuild_GetAllData_QueryResult_AWinEvent;
 SEntity[] GetAllEntities(AWinEvent _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_AWinEvent < EntityManager::GetDestroyVersion();
 	if (QueryVersion_2 < G_AWinEventVersion) rebuild = True;
 
 
@@ -837,6 +844,7 @@ SEntity[] GetAllEntities(AWinEvent _0)
 		return Cached_Entities_QueryResult_AWinEvent;
 
 	QueryVersion_2 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_AWinEvent = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_AWinEvent = True;
 	Rebuild_GetAllEntities_QueryResult_AWinEvent = False;
@@ -857,7 +865,7 @@ SEntity[] GetAllEntities(AWinEvent _0)
 
 QueryResult_AWinEvent[] GetAllData(AWinEvent _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_AWinEvent < EntityManager::GetDestroyVersion();
 	if (QueryVersion_2 < G_AWinEventVersion) rebuild = True;
 
 
@@ -865,6 +873,7 @@ QueryResult_AWinEvent[] GetAllData(AWinEvent _0)
 		return Cached_QueryResult_AWinEvent;
 
 	QueryVersion_2 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_AWinEvent = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_AWinEvent = True;
 	Rebuild_GetAllData_QueryResult_AWinEvent = False;
@@ -893,11 +902,12 @@ QueryResult_AWinEvent[] GetAllData(AWinEvent _0)
 declare QueryResult_AKit[] Cached_QueryResult_AKit;
 declare SEntity[] Cached_Entities_QueryResult_AKit;
 declare Integer QueryVersion_3;
+declare Integer DestroyVersion_QueryResult_AKit;
 declare Boolean Rebuild_GetAllEntities_QueryResult_AKit;
 declare Boolean Rebuild_GetAllData_QueryResult_AKit;
 SEntity[] GetAllEntities(AKit _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_AKit < EntityManager::GetDestroyVersion();
 	if (QueryVersion_3 < G_AKitVersion) rebuild = True;
 
 
@@ -905,6 +915,7 @@ SEntity[] GetAllEntities(AKit _0)
 		return Cached_Entities_QueryResult_AKit;
 
 	QueryVersion_3 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_AKit = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_AKit = True;
 	Rebuild_GetAllEntities_QueryResult_AKit = False;
@@ -925,7 +936,7 @@ SEntity[] GetAllEntities(AKit _0)
 
 QueryResult_AKit[] GetAllData(AKit _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_AKit < EntityManager::GetDestroyVersion();
 	if (QueryVersion_3 < G_AKitVersion) rebuild = True;
 
 
@@ -933,6 +944,7 @@ QueryResult_AKit[] GetAllData(AKit _0)
 		return Cached_QueryResult_AKit;
 
 	QueryVersion_3 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_AKit = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_AKit = True;
 	Rebuild_GetAllData_QueryResult_AKit = False;
@@ -961,11 +973,12 @@ QueryResult_AKit[] GetAllData(AKit _0)
 declare QueryResult_APlayer[] Cached_QueryResult_APlayer;
 declare SEntity[] Cached_Entities_QueryResult_APlayer;
 declare Integer QueryVersion_4;
+declare Integer DestroyVersion_QueryResult_APlayer;
 declare Boolean Rebuild_GetAllEntities_QueryResult_APlayer;
 declare Boolean Rebuild_GetAllData_QueryResult_APlayer;
 SEntity[] GetAllEntities(APlayer _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_APlayer < EntityManager::GetDestroyVersion();
 	if (QueryVersion_4 < G_APlayerVersion) rebuild = True;
 
 
@@ -973,6 +986,7 @@ SEntity[] GetAllEntities(APlayer _0)
 		return Cached_Entities_QueryResult_APlayer;
 
 	QueryVersion_4 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_APlayer = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_APlayer = True;
 	Rebuild_GetAllEntities_QueryResult_APlayer = False;
@@ -993,7 +1007,7 @@ SEntity[] GetAllEntities(APlayer _0)
 
 QueryResult_APlayer[] GetAllData(APlayer _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_APlayer < EntityManager::GetDestroyVersion();
 	if (QueryVersion_4 < G_APlayerVersion) rebuild = True;
 
 
@@ -1001,6 +1015,7 @@ QueryResult_APlayer[] GetAllData(APlayer _0)
 		return Cached_QueryResult_APlayer;
 
 	QueryVersion_4 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_APlayer = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_APlayer = True;
 	Rebuild_GetAllData_QueryResult_APlayer = False;
@@ -1029,11 +1044,12 @@ QueryResult_APlayer[] GetAllData(APlayer _0)
 declare QueryResult_APlayer_ATeam[] Cached_QueryResult_APlayer_ATeam;
 declare SEntity[] Cached_Entities_QueryResult_APlayer_ATeam;
 declare Integer QueryVersion_5;
+declare Integer DestroyVersion_QueryResult_APlayer_ATeam;
 declare Boolean Rebuild_GetAllEntities_QueryResult_APlayer_ATeam;
 declare Boolean Rebuild_GetAllData_QueryResult_APlayer_ATeam;
 SEntity[] GetAllEntities(APlayer _0, ATeam _1)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_APlayer_ATeam < EntityManager::GetDestroyVersion();
 	if (QueryVersion_5 < G_APlayerVersion) rebuild = True;
 if (QueryVersion_5 < G_ATeamVersion) rebuild = True;
 
@@ -1042,6 +1058,7 @@ if (QueryVersion_5 < G_ATeamVersion) rebuild = True;
 		return Cached_Entities_QueryResult_APlayer_ATeam;
 
 	QueryVersion_5 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_APlayer_ATeam = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_APlayer_ATeam = True;
 	Rebuild_GetAllEntities_QueryResult_APlayer_ATeam = False;
@@ -1062,7 +1079,7 @@ if (QueryVersion_5 < G_ATeamVersion) rebuild = True;
 
 QueryResult_APlayer_ATeam[] GetAllData(APlayer _0, ATeam _1)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_APlayer_ATeam < EntityManager::GetDestroyVersion();
 	if (QueryVersion_5 < G_APlayerVersion) rebuild = True;
 if (QueryVersion_5 < G_ATeamVersion) rebuild = True;
 
@@ -1071,6 +1088,7 @@ if (QueryVersion_5 < G_ATeamVersion) rebuild = True;
 		return Cached_QueryResult_APlayer_ATeam;
 
 	QueryVersion_5 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_APlayer_ATeam = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_APlayer_ATeam = True;
 	Rebuild_GetAllData_QueryResult_APlayer_ATeam = False;
@@ -1100,11 +1118,12 @@ if (QueryVersion_5 < G_ATeamVersion) rebuild = True;
 declare QueryResult_ALandmark[] Cached_QueryResult_ALandmark;
 declare SEntity[] Cached_Entities_QueryResult_ALandmark;
 declare Integer QueryVersion_6;
+declare Integer DestroyVersion_QueryResult_ALandmark;
 declare Boolean Rebuild_GetAllEntities_QueryResult_ALandmark;
 declare Boolean Rebuild_GetAllData_QueryResult_ALandmark;
 SEntity[] GetAllEntities(ALandmark _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_ALandmark < EntityManager::GetDestroyVersion();
 	if (QueryVersion_6 < G_ALandmarkVersion) rebuild = True;
 
 
@@ -1112,6 +1131,7 @@ SEntity[] GetAllEntities(ALandmark _0)
 		return Cached_Entities_QueryResult_ALandmark;
 
 	QueryVersion_6 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_ALandmark = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_ALandmark = True;
 	Rebuild_GetAllEntities_QueryResult_ALandmark = False;
@@ -1132,7 +1152,7 @@ SEntity[] GetAllEntities(ALandmark _0)
 
 QueryResult_ALandmark[] GetAllData(ALandmark _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_ALandmark < EntityManager::GetDestroyVersion();
 	if (QueryVersion_6 < G_ALandmarkVersion) rebuild = True;
 
 
@@ -1140,6 +1160,7 @@ QueryResult_ALandmark[] GetAllData(ALandmark _0)
 		return Cached_QueryResult_ALandmark;
 
 	QueryVersion_6 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_ALandmark = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_ALandmark = True;
 	Rebuild_GetAllData_QueryResult_ALandmark = False;
@@ -1168,11 +1189,12 @@ QueryResult_ALandmark[] GetAllData(ALandmark _0)
 declare QueryResult_ALandmark_ACurrentSpawn[] Cached_QueryResult_ALandmark_ACurrentSpawn;
 declare SEntity[] Cached_Entities_QueryResult_ALandmark_ACurrentSpawn;
 declare Integer QueryVersion_7;
+declare Integer DestroyVersion_QueryResult_ALandmark_ACurrentSpawn;
 declare Boolean Rebuild_GetAllEntities_QueryResult_ALandmark_ACurrentSpawn;
 declare Boolean Rebuild_GetAllData_QueryResult_ALandmark_ACurrentSpawn;
 SEntity[] GetAllEntities(ALandmark _0, ACurrentSpawn _1)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_ALandmark_ACurrentSpawn < EntityManager::GetDestroyVersion();
 	if (QueryVersion_7 < G_ALandmarkVersion) rebuild = True;
 if (QueryVersion_7 < G_ACurrentSpawnVersion) rebuild = True;
 
@@ -1181,6 +1203,7 @@ if (QueryVersion_7 < G_ACurrentSpawnVersion) rebuild = True;
 		return Cached_Entities_QueryResult_ALandmark_ACurrentSpawn;
 
 	QueryVersion_7 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_ALandmark_ACurrentSpawn = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_ALandmark_ACurrentSpawn = True;
 	Rebuild_GetAllEntities_QueryResult_ALandmark_ACurrentSpawn = False;
@@ -1201,7 +1224,7 @@ if (QueryVersion_7 < G_ACurrentSpawnVersion) rebuild = True;
 
 QueryResult_ALandmark_ACurrentSpawn[] GetAllData(ALandmark _0, ACurrentSpawn _1)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_ALandmark_ACurrentSpawn < EntityManager::GetDestroyVersion();
 	if (QueryVersion_7 < G_ALandmarkVersion) rebuild = True;
 if (QueryVersion_7 < G_ACurrentSpawnVersion) rebuild = True;
 
@@ -1210,6 +1233,7 @@ if (QueryVersion_7 < G_ACurrentSpawnVersion) rebuild = True;
 		return Cached_QueryResult_ALandmark_ACurrentSpawn;
 
 	QueryVersion_7 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_ALandmark_ACurrentSpawn = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_ALandmark_ACurrentSpawn = True;
 	Rebuild_GetAllData_QueryResult_ALandmark_ACurrentSpawn = False;
@@ -1239,11 +1263,12 @@ if (QueryVersion_7 < G_ACurrentSpawnVersion) rebuild = True;
 declare QueryResult_ACurrentSpawn[] Cached_QueryResult_ACurrentSpawn;
 declare SEntity[] Cached_Entities_QueryResult_ACurrentSpawn;
 declare Integer QueryVersion_8;
+declare Integer DestroyVersion_QueryResult_ACurrentSpawn;
 declare Boolean Rebuild_GetAllEntities_QueryResult_ACurrentSpawn;
 declare Boolean Rebuild_GetAllData_QueryResult_ACurrentSpawn;
 SEntity[] GetAllEntities(ACurrentSpawn _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_ACurrentSpawn < EntityManager::GetDestroyVersion();
 	if (QueryVersion_8 < G_ACurrentSpawnVersion) rebuild = True;
 
 
@@ -1251,6 +1276,7 @@ SEntity[] GetAllEntities(ACurrentSpawn _0)
 		return Cached_Entities_QueryResult_ACurrentSpawn;
 
 	QueryVersion_8 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_ACurrentSpawn = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_ACurrentSpawn = True;
 	Rebuild_GetAllEntities_QueryResult_ACurrentSpawn = False;
@@ -1271,7 +1297,7 @@ SEntity[] GetAllEntities(ACurrentSpawn _0)
 
 QueryResult_ACurrentSpawn[] GetAllData(ACurrentSpawn _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_ACurrentSpawn < EntityManager::GetDestroyVersion();
 	if (QueryVersion_8 < G_ACurrentSpawnVersion) rebuild = True;
 
 
@@ -1279,6 +1305,7 @@ QueryResult_ACurrentSpawn[] GetAllData(ACurrentSpawn _0)
 		return Cached_QueryResult_ACurrentSpawn;
 
 	QueryVersion_8 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_ACurrentSpawn = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_ACurrentSpawn = True;
 	Rebuild_GetAllData_QueryResult_ACurrentSpawn = False;
@@ -1307,11 +1334,12 @@ QueryResult_ACurrentSpawn[] GetAllData(ACurrentSpawn _0)
 declare QueryResult_ARound[] Cached_QueryResult_ARound;
 declare SEntity[] Cached_Entities_QueryResult_ARound;
 declare Integer QueryVersion_9;
+declare Integer DestroyVersion_QueryResult_ARound;
 declare Boolean Rebuild_GetAllEntities_QueryResult_ARound;
 declare Boolean Rebuild_GetAllData_QueryResult_ARound;
 SEntity[] GetAllEntities(ARound _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_ARound < EntityManager::GetDestroyVersion();
 	if (QueryVersion_9 < G_ARoundVersion) rebuild = True;
 
 
@@ -1319,6 +1347,7 @@ SEntity[] GetAllEntities(ARound _0)
 		return Cached_Entities_QueryResult_ARound;
 
 	QueryVersion_9 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_ARound = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllData_QueryResult_ARound = True;
 	Rebuild_GetAllEntities_QueryResult_ARound = False;
@@ -1339,7 +1368,7 @@ SEntity[] GetAllEntities(ARound _0)
 
 QueryResult_ARound[] GetAllData(ARound _0)
 {
-	declare rebuild = False;
+	declare rebuild = DestroyVersion_QueryResult_ARound < EntityManager::GetDestroyVersion();
 	if (QueryVersion_9 < G_ARoundVersion) rebuild = True;
 
 
@@ -1347,6 +1376,7 @@ QueryResult_ARound[] GetAllData(ARound _0)
 		return Cached_QueryResult_ARound;
 
 	QueryVersion_9 = G_RuntimeVersion;
+	DestroyVersion_QueryResult_ARound = EntityManager::GetDestroyVersion();
 
 	Rebuild_GetAllEntities_QueryResult_ARound = True;
 	Rebuild_GetAllData_QueryResult_ARound = False;

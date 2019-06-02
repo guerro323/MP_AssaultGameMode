@@ -102,8 +102,8 @@ Void Update()
 			{
 				attackSpeed += 1;
 				
-				if ((EndTime - Now) < 5900)
-					EndTime = Now + 4800;
+				if ((EndTime - Now) < 5800)
+					EndTime = Now + 5800;
 			}
 			else	
 				defCount += 1;

@@ -98,6 +98,62 @@ Void NewRound()
 	StartTime = Now;
 }
 
+Void DoPlayerMessages()
+{
+	foreach (event in PendingEvents)
+	{
+		if (event.Type != CSmModeEvent::EType::OnActionEvent)
+			continue;
+			
+	  declare Spamming for event.Player = 0;
+	  if (Now > Spamming) 
+		{
+	    Spamming = Now + 2000;
+	
+			declare Name = event.Player.Name;
+			declare Clan = event.Player.CurrentClan;
+			declare Txt  = "$z$s$> $f70» $fff";
+	
+	  	if (event.ActionInput == CSmModeEvent::EActionInput::Activable1) 
+			{
+			  Txt ^= "Help here!";
+			}
+			else if (event.ActionInput == CSmModeEvent::EActionInput::Activable2) 
+			{
+				Txt ^= "I need healing!";
+			}
+			else if (event.ActionInput == CSmModeEvent::EActionInput::Activable3) 
+			{
+				Txt ^= "Let's group here!";
+			}
+			else if (event.ActionInput == CSmModeEvent::EActionInput::Activable4) 
+			{
+				Txt ^= "Go go go!";
+			}
+			else if (event.ActionInput == CSmModeEvent::EActionInput::Consumable1) 
+			{
+				Txt ^= "Play the objective!";
+			}
+			else if (event.ActionInput == CSmModeEvent::EActionInput::Consumable2) 
+			{
+				Txt ^= "Retreat!";
+			}
+			
+			foreach (Player in Players)
+			{
+				if (Player.CurrentClan != Clan)
+					continue;
+					
+				declare UI <=> UIManager.GetUI(Player);
+				if (UI == Null)
+					continue;
+					
+				UI.SendNotice(Name ^ Txt, CUIConfig::ENoticeLevel::MapInfo, Null, CUIConfig::EAvatarVariant::Default, CUIConfig::EUISound::Custom3, 0);
+			}
+		}
+	}
+}
+
 Void Update()
 {
 	declare hitPoints = GetTeamHitPoints();
@@ -146,6 +202,8 @@ Void Update()
 			Reason = 2
 		});
 	}
+	
+	DoPlayerMessages();
 }
 
 declare Integer LastTeamWin;

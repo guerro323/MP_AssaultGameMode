@@ -25,5 +25,5 @@ APlayer constructor(CSmPlayer character)
 
 CSmPlayer ToShootManiaCharacter(APlayer data)
 {
-	return Players[data.Character];
+	return AllPlayers[data.Character];
 }

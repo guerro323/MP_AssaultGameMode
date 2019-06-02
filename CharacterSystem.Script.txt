@@ -90,6 +90,13 @@ Void Spawn(APlayer player, Integer team, Integer atkTeam, CMapSpawn atkSpawn, CM
 	}
 }
 
+Void OnShoot(CSmModeEvent event)
+{
+	declare lastShoot for event.Shooter = -1;
+	
+	lastShoot = Now;
+}
+
 Void OnHit(CSmModeEvent event)
 {
 	if (event.Shooter == Null || event.Victim == Null)
@@ -125,9 +132,15 @@ Void OnHit(CSmModeEvent event)
 	if (event.Victim.CurWeapon == GetWeaponNum(CSmMode::EWeapon::Nucleus))
 	{
 		if (event.Victim.CurrentClan == event.Shooter.CurrentClan)
-			AddPlayerAmmo(event.Victim, CSmMode::EWeapon::Nucleus, 0.15);
+			AddPlayerAmmo(event.Victim, CSmMode::EWeapon::Nucleus, 0.215);
 		else
-			AddPlayerAmmo(event.Victim, CSmMode::EWeapon::Nucleus, 0.33);
+			AddPlayerAmmo(event.Victim, CSmMode::EWeapon::Nucleus, 0.425);
+	}
+	
+	if (event.Shooter.CurWeapon == GetWeaponNum(CSmMode::EWeapon::Missile)
+		&& event.Damage > 100)
+	{
+		AddPlayerAmmo(event.Shooter, CSmMode::EWeapon::Missile, 2.0);
 	}
 		
 	if (event.Shooter.Armor - event.Damage < event.Shooter.ArmorMax)
@@ -172,6 +185,10 @@ Void Update()
 	
 	foreach (event in PendingEvents)
 	{
+		if (event.Type == CSmModeEvent::EType::OnShoot)
+		{
+			OnShoot(event);
+		}
 		if (event.Type == CSmModeEvent::EType::OnHit)
 		{
 			OnHit(event);
@@ -246,5 +263,20 @@ Void Update()
 			character.EnergyLevel = 1.0;
 		else
 			character.EnergyLevel = 0.1;
+			
+		if (playerData.Kit.Index == 0)
+			continue;
+			
+		declare kit = Components::Get(playerData.Kit, AKit {});
+		if (kit.CanReloadFaster)
+		{
+			declare lastShoot for character = -1;
+			if (lastShoot != -1 && lastShoot + 4000 < Now)
+			{
+				character.AmmoGain = kit.FastAmmoGain;
+			}
+			else
+				character.AmmoGain = kit.AmmoGain;
+		}
 	}
 }

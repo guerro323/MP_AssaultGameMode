@@ -5,6 +5,9 @@
     Real AmmoGain;
     Integer AmmoMax;
 		Boolean CanHeal;
+		
+		Boolean CanReloadFaster;
+		Real FastAmmoGain;
 
 		// Armor
 		Integer ArmorMax;
